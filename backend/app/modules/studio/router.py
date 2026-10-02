@@ -112,11 +112,22 @@ def generate_images(
             files={"image": (filename, BytesIO(image), payload.image_mime_type)},
         )
         if response.status_code >= 400:
-            logger.warning("OpenAI image edit failed: status=%s request_id=%s", response.status_code, response.headers.get("x-request-id"))
+            try:
+                provider_error = response.json().get("error", {})
+                error_code = provider_error.get("code") if isinstance(provider_error, dict) else None
+            except (ValueError, AttributeError):
+                error_code = None
+            logger.warning("OpenAI image edit failed: status=%s code=%s request_id=%s", response.status_code, error_code, response.headers.get("x-request-id"))
             if response.status_code == 429:
                 raise HTTPException(429, "El servicio de imágenes está ocupado. Inténtalo más tarde.")
-            if response.status_code in {401, 403, 404}:
-                raise HTTPException(503, "La generación de imágenes no está disponible con la configuración actual.")
+            if response.status_code == 401:
+                if error_code == "ip_not_authorized":
+                    raise HTTPException(503, "OpenAI bloqueó el acceso desde esta red. Revisa los permisos de conexión del proyecto.")
+                raise HTTPException(503, "La clave de OpenAI configurada no es válida o fue revocada. Actualízala para generar imágenes.")
+            if response.status_code == 403:
+                raise HTTPException(503, "El proyecto de OpenAI no tiene permiso para generar imágenes. Revisa sus permisos.")
+            if response.status_code == 404:
+                raise HTTPException(503, "El modelo de imágenes configurado no está disponible para este proyecto.")
             if response.status_code == 400:
                 raise HTTPException(422, "No se pudo generar la imagen con esta fotografía o descripción. Prueba otra opción.")
             raise HTTPException(502, "No pudimos generar las imágenes en este momento.")

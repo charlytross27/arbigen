@@ -52,6 +52,7 @@ export class StudioComponent implements OnDestroy {
   readonly saveError = signal<string | null>(null);
   readonly saving = signal(false);
   readonly generationError = signal<string | null>(null);
+  readonly configurationError = signal(false);
   readonly fileError = signal<string | null>(null);
   readonly formTouched = signal(false);
   readonly canGenerate = computed(() => {
@@ -150,12 +151,14 @@ export class StudioComponent implements OnDestroy {
     this.savedIds.set(new Set());
     this.status.set('loading');
     this.generationError.set(null);
+    this.configurationError.set(false);
     const version = ++this.generationVersion;
     this.generationSubscription = this.api.generate(this.source()!.file, this.configuration()).subscribe({
       next: result => { void this.prepareVariants(result, version); },
       error: (error: HttpErrorResponse) => {
         if (version !== this.generationVersion || this.destroyed) return;
         this.generationError.set(error.error?.error?.message ?? 'No pudimos generar las imágenes. Inténtalo de nuevo.');
+        this.configurationError.set(error.status === 503);
         this.status.set('error');
       },
     });
@@ -235,6 +238,7 @@ export class StudioComponent implements OnDestroy {
     this.savedIds.set(new Set());
     this.saveError.set(null);
     this.generationError.set(null);
+    this.configurationError.set(false);
     this.clearDownloads();
   }
 

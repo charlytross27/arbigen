@@ -88,3 +88,15 @@ def test_studio_provider_failure_has_no_sensitive_details() -> None:
             generate_images(request(), Settings(openai_api_key="test-only", _env_file=None), client)
     assert error.value.status_code == 503
     assert "private provider detail" not in error.value.detail
+
+
+def test_studio_reports_invalid_api_key_without_leaking_provider_response() -> None:
+    def respond(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, json={"error": {"code": "invalid_api_key", "message": "secret provider details"}})
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        with pytest.raises(HTTPException) as error:
+            generate_images(request(), Settings(openai_api_key="test-only", _env_file=None), client)
+    assert error.value.status_code == 503
+    assert "clave de OpenAI" in error.value.detail
+    assert "secret provider details" not in error.value.detail
