@@ -8,6 +8,7 @@ from app.modules.health.router import router as health_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.auth.router import router as auth_router
 from app.modules.studio.router import router as studio_router
+from app.modules.catalogs.router import router as catalogs_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -19,7 +20,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=config.cors_origins,
         allow_credentials=False,
-        allow_methods=["GET", "POST", "PUT"],
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["Content-Type", "X-CSRF-Token"],
     )
     @application.middleware("http")
@@ -35,6 +36,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(analyses_router)
     application.include_router(dashboard_router)
     application.include_router(studio_router)
+    application.include_router(catalogs_router)
     return application
 
 

@@ -94,7 +94,7 @@ def generate_images(
     if not size:
         raise HTTPException(422, "Elige un formato de imagen válido.")
     fields = {
-        "model": settings.openai_image_model or "gpt-image-2.5-sunburst",
+        "model": settings.openai_image_model or "gpt-image-2",
         "prompt": _prompt(payload),
         "n": str(payload.variations),
         "size": size,

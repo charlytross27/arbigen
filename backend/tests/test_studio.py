@@ -36,6 +36,7 @@ def test_studio_sends_reference_and_exact_requested_count() -> None:
     body = observed[0].content
     assert b'name="n"' in body and b"\r\n2\r\n" in body
     assert b"1024x1280" in body
+    assert b"gpt-image-2" in body
     assert b"small-test-image" in body
     assert b"Mesa de piedra clara" in body
 

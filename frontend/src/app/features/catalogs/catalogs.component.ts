@@ -1,20 +1,20 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import type { CatalogCampaign } from '../../core/models/catalog.model';
 import { IconComponent } from '../../shared/icon.component';
-import { CatalogSessionService } from './catalog-session.service';
+import { CatalogService } from './catalog.service';
 
 @Component({
   selector: 'app-catalogs', standalone: true,
   imports: [RouterLink, IconComponent],
   templateUrl: './catalogs.component.html', styleUrl: './catalogs.component.scss',
 })
-export class CatalogsComponent {
+export class CatalogsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  readonly catalog = inject(CatalogSessionService);
+  readonly catalog = inject(CatalogService);
 
   private readonly routeParams = toSignal(this.route.paramMap, { initialValue: this.route.snapshot.paramMap });
   readonly routeId = computed(() => this.routeParams().get('id'));
@@ -38,16 +38,33 @@ export class CatalogsComponent {
     return {
       campaigns: campaigns.length,
       assets: campaigns.reduce((sum, item) => sum + item.assets.length, 0),
-      session: campaigns.length,
+      favorites: campaigns.reduce((sum, item) => sum + item.assets.filter(asset => asset.favorite).length, 0),
     };
   });
 
   setSearch(event: Event): void { this.search.set((event.target as HTMLInputElement).value); }
   formatDate(date: string): string { return new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(date)); }
 
-  deleteCampaign(id: string): void {
-    this.catalog.deleteCampaign(id);
-    if (this.routeId()) void this.router.navigate(['/catalogs']);
+  ngOnInit(): void { void this.catalog.load(); }
+
+  async deleteCampaign(id: string): Promise<void> {
+    this.actionError.set(null);
+    try {
+      await this.catalog.deleteCampaign(id);
+      if (this.routeId()) await this.router.navigate(['/catalogs']);
+    } catch (error) { this.actionError.set(this.apiError(error)); }
+  }
+
+  async toggleFavorite(campaignId: string, assetId: string): Promise<void> {
+    this.actionError.set(null);
+    try { await this.catalog.toggleFavorite(campaignId, assetId); }
+    catch (error) { this.actionError.set(this.apiError(error)); }
+  }
+
+  async restoreDeleted(): Promise<void> {
+    this.actionError.set(null);
+    try { await this.catalog.restoreDeleted(); }
+    catch (error) { this.actionError.set(this.apiError(error)); }
   }
 
   async addVariation(campaign: CatalogCampaign): Promise<void> {
@@ -70,7 +87,7 @@ export class CatalogsComponent {
 
   private apiError(error: unknown): string {
     return error instanceof HttpErrorResponse
-      ? error.error?.error?.message ?? 'No pudimos generar la imagen. Comprueba tu conexión antes de reintentar.'
-      : 'No pudimos preparar la imagen. Inténtalo de nuevo.';
+      ? error.error?.error?.message ?? 'No pudimos completar la acción. Comprueba tu conexión antes de reintentar.'
+      : 'No pudimos completar la acción. Inténtalo de nuevo.';
   }
 }

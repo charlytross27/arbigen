@@ -10,6 +10,7 @@ __pycache__/
 !.env.example
 coverage/
 backend/local-backups/
+backend/.data/
 .DS_Store
 *.log
 notebooks/data/*

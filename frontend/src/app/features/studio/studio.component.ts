@@ -4,7 +4,7 @@ import { Subscription } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CampaignAspectRatio, CampaignConfiguration, CampaignLighting, CampaignStyle, StudioVariant } from '../../core/models/campaign.model';
 import { IconComponent } from '../../shared/icon.component';
-import { CatalogSessionService } from '../catalogs/catalog-session.service';
+import { CatalogService } from '../catalogs/catalog.service';
 import { StudioApiService, StudioGenerationResponse } from './studio-api.service';
 
 interface SourceImage {
@@ -28,7 +28,7 @@ export class StudioComponent implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(StudioApiService);
-  private readonly catalogs = inject(CatalogSessionService);
+  private readonly catalogs = inject(CatalogService);
   private generationSubscription: Subscription | null = null;
   private uploadVersion = 0;
   private generationVersion = 0;
@@ -42,7 +42,7 @@ export class StudioComponent implements OnDestroy {
   readonly configuration = signal<CampaignConfiguration>({
     productName: (this.route.snapshot.queryParamMap.get('product') ?? '').slice(0, 80),
     productDescription: '', style: 'Minimalista', scene: 'Cafetería moderna',
-    lighting: 'Natural', aspectRatio: '1:1', variations: 2,
+    lighting: 'Natural', aspectRatio: '1:1', variations: 1,
   });
   readonly status = signal<StudioStatus>('idle');
   readonly variants = signal<readonly StudioVariant[]>([]);
@@ -50,6 +50,7 @@ export class StudioComponent implements OnDestroy {
   readonly previewBlobs = signal<ReadonlyMap<string, Blob>>(new Map());
   readonly savedIds = signal<ReadonlySet<string>>(new Set());
   readonly saveError = signal<string | null>(null);
+  readonly saving = signal(false);
   readonly generationError = signal<string | null>(null);
   readonly fileError = signal<string | null>(null);
   readonly formTouched = signal(false);
@@ -164,9 +165,9 @@ export class StudioComponent implements OnDestroy {
     });
   }
 
-  createCatalog(): void {
+  async createCatalog(): Promise<void> {
     const image = this.source();
-    if (!image || this.status() !== 'success') return;
+    if (!image || this.status() !== 'success' || this.saving()) return;
     this.saveError.set(null);
     const previews: { variant: StudioVariant; blob: Blob; selected: boolean }[] = [];
     for (const variant of this.variants()) {
@@ -178,10 +179,15 @@ export class StudioComponent implements OnDestroy {
       previews.push({ variant, blob, selected: this.savedIds().has(variant.id) });
     }
     try {
-      const campaign = this.catalogs.saveFromStudio(this.configuration(), image.file, previews);
-      void this.router.navigate(['/catalogs', campaign.id]);
-    } catch {
-      this.saveError.set('No pudimos crear el catálogo.');
+      this.saving.set(true);
+      const campaign = await this.catalogs.saveFromStudio(this.configuration(), image.file, previews);
+      await this.router.navigate(['/catalogs', campaign.id]);
+    } catch (error) {
+      this.saveError.set(error instanceof HttpErrorResponse
+        ? error.error?.error?.message ?? 'No pudimos guardar el catálogo. Inténtalo de nuevo.'
+        : 'No pudimos preparar el catálogo. Inténtalo de nuevo.');
+    } finally {
+      this.saving.set(false);
     }
   }
 

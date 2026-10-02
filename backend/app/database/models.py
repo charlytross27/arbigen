@@ -165,8 +165,13 @@ class Campaign(Base):
     lighting: Mapped[str] = mapped_column(String(40), nullable=False)
     aspect_ratio: Mapped[str] = mapped_column(String(8), nullable=False)
     original_image_url: Mapped[str] = mapped_column(Text, nullable=False)
+    original_image_name: Mapped[str] = mapped_column(String(160), nullable=False, server_default="Fotografía original")
+    original_image_content_type: Mapped[str] = mapped_column(String(32), nullable=False, server_default="image/png")
+    variations: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     status: Mapped[str] = mapped_column(String(24), nullable=False, server_default="draft")
     created_at: Mapped[datetime] = created_at()
+
+    __table_args__ = (CheckConstraint("variations BETWEEN 1 AND 4", name="variations_range"),)
 
 
 class GeneratedAsset(Base):
