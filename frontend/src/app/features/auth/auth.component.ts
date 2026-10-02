@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/services/auth.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-auth', standalone: true,
@@ -15,6 +16,7 @@ export class AuthComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   readonly registering = this.route.snapshot.routeConfig?.path === 'register';
+  readonly isDevelopment = !environment.production;
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
 

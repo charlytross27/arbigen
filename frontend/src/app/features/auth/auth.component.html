@@ -1,6 +1,7 @@
 <main class="auth-page">
   <div class="auth-brand"><span class="brand-mark">A</span><span>Arbigen<small>INTELIGENCIA PARA VENDER</small></span></div>
   <section class="auth-card" aria-labelledby="auth-title">
+    @if (isDevelopment) { <p class="eyebrow">DESARROLLO LOCAL · BASE DE DATOS LOCAL</p> }
     <p class="eyebrow">ACCESO PRIVADO</p>
     <h1 id="auth-title">{{ registering ? 'Crea tu cuenta' : 'Bienvenido de nuevo' }}</h1>
     <p class="intro">{{ registering ? 'Usa tu código de invitación para abrir un espacio personal.' : 'Entra para consultar tus investigaciones guardadas.' }}</p>

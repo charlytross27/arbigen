@@ -3,7 +3,7 @@
   <a routerLink="/explore" class="button primary"><app-icon name="plus" />Nueva investigación</a>
 </section>
 
-<div class="overview-heading"><div><h2>Vista general</h2><span class="subtle-label">Datos de este navegador</span></div><label class="period"><app-icon name="clock" /><span class="sr-only">Periodo de Inicio</span><select [value]="period()" (change)="setPeriod($event)"><option value="30">Últimos 30 días</option><option value="7">Últimos 7 días</option></select></label></div>
+<div class="overview-heading"><div><h2>Vista general</h2><span class="subtle-label">Datos de tu cuenta</span></div><label class="period"><app-icon name="clock" /><span class="sr-only">Periodo de Inicio</span><select [value]="period()" (change)="setPeriod($event)"><option value="30">Últimos 30 días</option><option value="7">Últimos 7 días</option></select></label></div>
 
 @let view = state();
 @if (view.status === 'loading') {
@@ -44,5 +44,5 @@
     @if (view.data.activity.length) { <div class="activity-list">@for (item of view.data.activity; track item.kind + item.analysis_id + item.occurred_at) { <a [routerLink]="['/analysis', item.analysis_id]" class="activity-item"><span class="activity-icon"><app-icon [name]="activityIcon(item.kind)" /></span><span class="activity-copy"><strong>{{ activityLabel(item.kind) }}</strong><small>{{ item.query }} · {{ countryLabel(item.country) }}</small></span><time [attr.datetime]="item.occurred_at">{{ formatDate(item.occurred_at) }}</time><app-icon class="activity-arrow" name="chevron" /></a> }</div> }
     @else { <p class="empty-activity">No se registraron cambios en este periodo.</p> }
   </section>
-  <p class="data-note"><app-icon name="info" />La muestra de productos y el índice de Trends describen datos observados; no equivalen a ventas, demanda absoluta ni competencia. Este espacio se identifica por el navegador y aún no tiene autenticación de cuenta.</p>
+  <p class="data-note"><app-icon name="info" />La muestra de productos y el índice de Trends describen datos observados; no equivalen a ventas, demanda absoluta ni competencia. Estos datos pertenecen a tu cuenta.</p>
 }

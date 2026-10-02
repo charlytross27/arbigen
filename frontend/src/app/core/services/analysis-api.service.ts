@@ -10,12 +10,13 @@ import { ForecastReport } from '../models/analysis-forecast.model';
 import { OpportunityScoreReport, ScorePreviewRequest } from '../models/opportunity-score.model';
 import { DashboardData, DashboardPeriod } from '../models/dashboard.model';
 import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AnalysisApiService {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
-  private readonly baseUrl = '/api/v1/analyses';
+  private readonly baseUrl = `${environment.apiBasePath}/v1/analyses`;
 
   create(payload: CreateAnalysisRequest): Observable<SavedAnalysis> {
     return this.http.post<SavedAnalysis>(this.baseUrl, payload, { headers: this.headers() });
@@ -28,7 +29,7 @@ export class AnalysisApiService {
   }
 
   dashboard(days: DashboardPeriod): Observable<DashboardData> {
-    return this.http.get<DashboardData>('/api/v1/dashboard', { headers: this.headers(), params: { days } });
+    return this.http.get<DashboardData>(`${environment.apiBasePath}/v1/dashboard`, { headers: this.headers(), params: { days } });
   }
 
   get(id: string): Observable<SavedAnalysis> {

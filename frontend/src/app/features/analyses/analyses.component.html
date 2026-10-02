@@ -1,6 +1,6 @@
 <div class="analyses-page">
-  <header class="page-heading"><div><span class="eyebrow">INTELIGENCIA DE MERCADO / TU HISTORIAL</span><h1>Mis análisis</h1><p>Recupera las investigaciones que guardaste desde este navegador demo.</p></div><a routerLink="/explore" class="button primary"><app-icon name="plus" />Nueva investigación</a></header>
-  <div class="data-notice"><app-icon name="info" /><p><strong>Investigaciones guardadas en PostgreSQL.</strong> Las fichas pueden preparar productos, importar una serie de Google Trends y calcular señales, segmentos y pronósticos exploratorios con los datos disponibles. El identificador de este navegador separa los registros de la demo, pero no sustituye una cuenta segura.</p></div>
+  <header class="page-heading"><div><span class="eyebrow">INTELIGENCIA DE MERCADO / TU HISTORIAL</span><h1>Mis análisis</h1><p>Recupera las investigaciones guardadas en tu cuenta.</p></div><a routerLink="/explore" class="button primary"><app-icon name="plus" />Nueva investigación</a></header>
+  <div class="data-notice"><app-icon name="info" /><p><strong>Investigaciones guardadas en PostgreSQL.</strong> Las fichas pueden preparar productos, importar una serie de Google Trends y calcular señales, segmentos y pronósticos exploratorios con los datos disponibles. Solo tu cuenta puede consultar estos registros.</p></div>
 
   @if (status() === 'loading') {
     <div class="list-stack" role="status" aria-live="polite">@for (item of [1,2,3]; track item) { <div class="panel skeleton row-skeleton"></div> }<span class="sr-only">Cargando investigaciones guardadas…</span></div>

@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Arbigen API"
     environment: Literal["development", "test", "production"] = "development"
-    cors_origins: list[str] = ["http://localhost:4200"]
+    cors_origins: list[str] = ["http://localhost:4200", "http://127.0.0.1:4200"]
     database_url: str | None = None
     database_migration_url: str | None = None
     auth_registration_code: str | None = Field(default=None, min_length=24)

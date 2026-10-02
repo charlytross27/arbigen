@@ -23,4 +23,4 @@ def authenticated_headers(connection: Connection) -> dict[str, str]:
             expires_at=datetime.now(timezone.utc) + timedelta(days=1),
         ))
         session.commit()
-    return {"Cookie": f"arbigen_session={token}", "Origin": "http://testserver", "X-CSRF-Token": csrf_token}
+    return {"Cookie": f"arbigen_session={token}", "Origin": "http://localhost:4200", "X-CSRF-Token": csrf_token}

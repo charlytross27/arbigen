@@ -43,6 +43,7 @@ nav app-icon { width: 18px; height: 18px; }
 .market { gap: 7px; color: #778176; font-size: 12px; }
 .market app-icon { width: 14px; height: 14px; }
 .demo-badge { display: inline-flex; gap: 6px; align-items: center; font-size: 11px; padding: 6px 9px; border-radius: 5px; color: #67804e; background: #f2f5e9; border: 1px solid #e5ebd7; }
+.environment-badge { display: inline-flex; align-items: center; font-size: 11px; padding: 6px 9px; border-radius: 5px; color: #245780; background: #eaf3fa; border: 1px solid #c9e0f1; white-space: nowrap; }
 .demo-badge span { width: 5px; height: 5px; background: #829a54; border-radius: 50%; }
 main { padding: 36px 38px 24px; width: 100%; max-width: 1520px; margin: 0 auto; flex: 1; }
 main:focus { outline: none; }

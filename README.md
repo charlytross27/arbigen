@@ -49,13 +49,13 @@ npm ci
 npm start
 ```
 
-Abrir [http://localhost:4200](http://localhost:4200). `npm start` usa `frontend/proxy.conf.json` para dirigir `/api` a FastAPI en `127.0.0.1:8000`; inicia también backend y PostgreSQL para ver Inicio y guardar búsquedas.
+Abrir [http://localhost:4200](http://localhost:4200). `npm start` selecciona `development` en `angular.json`; su proxy `/api/**` dirige todas las rutas de API a FastAPI en `127.0.0.1:8000`. El encabezado muestra «Desarrollo local». Inicia también backend y PostgreSQL para ver Inicio y guardar búsquedas. La [guía de entornos](docs/entornos.md) explica cómo conservar los datos locales, registrar una cuenta de desarrollo y reasignar investigaciones anteriores a esa cuenta.
 
 ```bash
 npm run build
 ```
 
-La compilación de producción queda en `frontend/dist/arbigen/browser/`.
+`npm run build` selecciona `production`; `npm run build:development` compila la variante local sin desplegarla. Ambas dejan la salida en `frontend/dist/arbigen/browser/`, por lo que no se ejecutan simultáneamente.
 
 ## Levantar backend
 
@@ -144,7 +144,7 @@ Para un ensayo integral en una base local dedicada, configura `ARBIGEN_TEST_DATA
 | --- | --- | --- |
 | `APP_NAME` | `Arbigen API` | Nombre de la API |
 | `ENVIRONMENT` | `development` | `development`, `test` o `production` |
-| `CORS_ORIGINS` | `["http://localhost:4200"]` | Lista JSON de orígenes permitidos |
+| `CORS_ORIGINS` | `localhost:4200` y `127.0.0.1:4200` | Lista JSON de orígenes permitidos |
 | `AUTH_REGISTRATION_CODE` | vacío | Código de invitación de al menos 24 caracteres; sin él el registro responde 503 |
 | `DATABASE_URL` | vacío | URL de PostgreSQL para FastAPI; preferiblemente endpoint agrupado en Vercel |
 | `DATABASE_MIGRATION_URL` | vacío | URL directa para Alembic; si falta, usa `DATABASE_URL` |
@@ -156,7 +156,7 @@ Para un ensayo integral en una base local dedicada, configura `ARBIGEN_TEST_DATA
 | `APIFY_MAX_PAGES` | `4` | Máximo de páginas que procesa el actor (1–50) |
 | `APIFY_REQUEST_TIMEOUT_SECONDS` | `120` | Timeout de la ejecución síncrona (10–290 s) |
 
-Las variables de OpenAI y storage siguen reservadas y vacías. No hay secretos en Angular. Angular CLI no carga `.env` automáticamente; el archivo de ejemplo del frontend explica esta limitación. En desarrollo Angular usa el proxy `/api`; en Vercel, `frontend/vercel.json` reescribe `/api` al backend público. El backend no abre una conexión a PostgreSQL para responder `/api/health`.
+Las variables de OpenAI y storage siguen reservadas y vacías. No hay secretos en Angular. Angular CLI no carga `.env` automáticamente: `environment.ts` contiene solo la ruta pública `/api` y `environment.development.ts` la sustituye mediante `fileReplacements`. En desarrollo el proxy de Angular dirige `/api/**` al backend local; en Vercel, `frontend/vercel.json` reescribe `/api` al backend público. El backend no abre una conexión a PostgreSQL para responder `/api/health`.
 
 ## Rutas
 
@@ -232,7 +232,7 @@ El estado de carga de Inicio aparece al cambiar de periodo. Las ramas vacía y e
 
 La estructura PostgreSQL, las búsquedas guardadas, los contratos `MarketplaceSearchProvider` y `TrendsProvider`, el modelo `MarketplaceProduct`, los adaptadores Apify/oficial, el importador CSV, el ETL, las variables descriptivas, la segmentación, el pronóstico validado y el score exploratorio ya existen. El token oficial local funciona para `/users/me` y `/products/search`, pero `/sites/MLM/search` responde 403. Con autorización específica se ejecutó una consulta del actor de Karamelo para «juguetes de bebe» en MX, una página y `maxItems=12`: quedaron 12 productos depurados; el clustering agrupó 11 en dos segmentos e informó un precio atípico excluido solo del ajuste. La investigación local tiene ahora 273 puntos mensuales importados del CSV `Time` facilitado por el usuario (enero de 2004 a septiembre de 2026); el pronóstico validado eligió el método estacional ingenuo. El país no es verificable dentro de ese formato, como indica la ficha. Colombia y Argentina están cubiertos por pruebas HTTP simuladas, todavía no por una ejecución real del actor. El límite de 200 es un máximo, no una garantía de que el actor devuelva exactamente 200 productos. Cada pulsación de «Consultar y preparar» o «Actualizar y preparar» inicia otra ejecución del actor y puede generar cargos; reprocesar, descargar el JSON, abrir el cuaderno o calcular un escenario no inicia búsquedas. Siguen pendientes recuperación de cuenta, MFA, protección persistente contra intentos masivos, análisis de mercado más amplio, mediciones independientes de demanda y competencia, conexión de las demás pantallas con la API, generación de imágenes con IA y almacenamiento externo. Los catálogos de campañas todavía viven solo en memoria del navegador.
 
-El backend usa una entrada reconocible por Vercel, conexiones perezosas y migraciones externas al ciclo de vida de la Function. La migración 0004 está aplicada en Neon `neon-bole-cave` (rama `main`, base `neondb`); el esquema local debe actualizarse antes de volver a usarlo. `frontend/vercel.json` configura la salida Angular, la reescritura de `/api` y el fallback SPA. El código está publicado en el repositorio privado. [Arbigen web](https://arbigen-web.vercel.app/) responde en Production; `/api/health` y las rutas protegidas de `/api/v1/` pasan mediante su proxy hacia [Arbigen API](https://arbigen-api.vercel.app/api/health). La base alojada está vacía: las investigaciones, productos y Trends de la base local no se han transferido. Las rutas de datos requieren una sesión; el UUID demo de localStorage ya no concede acceso.
+El backend usa una entrada reconocible por Vercel, conexiones perezosas y migraciones externas al ciclo de vida de la Function. La migración 0004 está aplicada en Neon `neon-bole-cave` (rama `main`, base `neondb`) y en PostgreSQL local `arbigen`. `frontend/vercel.json` configura la salida Angular, la reescritura de `/api` y el fallback SPA. El código publicado en Production sigue en `main`; los cambios de Development están en una rama local para probarlos antes de publicar. [Arbigen web](https://arbigen-web.vercel.app/) responde en Production; `/api/health` y las rutas protegidas de `/api/v1/` pasan mediante su proxy hacia [Arbigen API](https://arbigen-api.vercel.app/api/health). La base alojada no recibió las investigaciones, productos ni Trends locales. La investigación local histórica ya pertenece a la cuenta registrada en Development; el UUID demo de localStorage no concede acceso.
 
 **Siguiente paso propuesto:** crear la primera cuenta con el código de invitación y migrar de forma controlada las investigaciones locales a esa cuenta. Después, sustituir las rutas de análisis y oportunidad de ejemplo por datos persistidos donde ya exista evidencia. Cualquier búsqueda nueva con Apify requiere valorar su costo.
 

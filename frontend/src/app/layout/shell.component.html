@@ -71,6 +71,7 @@
         ><span>{{ currentSection() }}</span>
       </div>
       <div class="topbar-right">
+        @if (isDevelopment) { <span class="environment-badge">Desarrollo local</span> }
         <span class="demo-badge"><span></span>Sesión privada</span
         ><a
           class="avatar small"

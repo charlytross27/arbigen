@@ -29,7 +29,17 @@
               ],
               "outputHashing": "all"
             },
-            "development": { "optimization": false, "extractLicenses": false, "sourceMap": true }
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.development.ts"
+                }
+              ]
+            }
           },
           "defaultConfiguration": "production"
         },
@@ -37,7 +47,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": { "buildTarget": "arbigen:build:production" },
-            "development": { "buildTarget": "arbigen:build:development" }
+            "development": {
+              "buildTarget": "arbigen:build:development",
+              "proxyConfig": "proxy.conf.json"
+            }
           },
           "defaultConfiguration": "development"
         }
