@@ -1,0 +1,3 @@
+Migraciones PostgreSQL de Arbigen.
+La URL proviene de DATABASE_MIGRATION_URL o, en desarrollo local, DATABASE_URL.
+Ejecutar alembic upgrade head fuera del arranque de FastAPI y del build de Vercel.

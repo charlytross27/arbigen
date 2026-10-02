@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-label="Ilustración ficticia de lámpara de mesa nórdica sobre fondo claro">
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#f7f7f1"/><stop offset="1" stop-color="#e8ede4"/></linearGradient><linearGradient id="shade" x2="0" y2="1"><stop stop-color="#e6e3d9"/><stop offset="1" stop-color="#c9cfbf"/></linearGradient><filter id="shadow"><feGaussianBlur stdDeviation="15"/></filter></defs>
+  <rect width="640" height="640" fill="url(#bg)"/><circle cx="320" cy="302" r="242" fill="none" stroke="#dfe7db" stroke-width="1"/><ellipse cx="320" cy="529" rx="190" ry="26" fill="#9eafa1" opacity=".27" filter="url(#shadow)"/>
+  <path d="M238 157h164l57 199H181Z" fill="url(#shade)" stroke="#9fae9e" stroke-width="5"/><path d="M244 170h152l43 171H201Z" fill="#f1f0e7" opacity=".52"/><path d="M320 356v152" stroke="#65796d" stroke-width="21"/><path d="M266 514h108" stroke="#65796d" stroke-width="23" stroke-linecap="round"/><ellipse cx="320" cy="355" rx="139" ry="17" fill="#c0c9ba"/><ellipse cx="320" cy="355" rx="132" ry="11" fill="#e8e9dd"/>
+  <text x="38" y="598" fill="#89998a" font-family="sans-serif" font-size="14" letter-spacing="3">ARBIGEN · DEMO</text>
+</svg>

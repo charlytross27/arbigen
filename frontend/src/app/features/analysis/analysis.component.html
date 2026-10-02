@@ -1,0 +1,166 @@
+<div class="analysis-page">
+  @let result = state();
+  <div class="page-top"><a [routerLink]="result.status === 'saved' ? '/analyses' : '/explore'" class="text-link"><span aria-hidden="true">←</span>{{ result.status === 'saved' ? 'Volver a Mis análisis' : 'Volver al Explorador' }}</a><span class="demo-top"><span></span>{{ result.status === 'saved' ? 'BÚSQUEDA GUARDADA' : 'ANÁLISIS DE EJEMPLO' }}</span></div>
+  @if (result.status === 'loading') {
+    <div class="loading-state" role="status" aria-live="polite"><div class="panel skeleton title-skeleton"></div><div class="metric-grid">@for (item of [1, 2, 3, 4, 5]; track item) { <div class="panel skeleton metric-skeleton"></div> }</div><div class="panel skeleton chart-skeleton"></div><span class="sr-only">Cargando análisis…</span></div>
+  } @else if (result.status === 'error') {
+    <section class="panel message-state" role="alert"><span class="state-icon"><app-icon name="info" /></span><h1>No pudimos abrir el análisis</h1><p>Revisa la conexión con FastAPI y vuelve a intentarlo.</p><button class="button primary" (click)="retry()">Volver a intentar</button></section>
+  } @else if (result.status === 'missing') {
+    <section class="panel message-state"><span class="state-icon"><app-icon name="search" /></span><span class="eyebrow">NO DISPONIBLE EN ESTE NAVEGADOR</span><h1>Esta investigación no está en tu espacio demo.</h1><p>Comprueba el enlace o vuelve a la lista de búsquedas guardadas.</p><div class="state-actions"><a routerLink="/analyses" class="button primary">Ver Mis análisis<app-icon name="arrow" /></a><a routerLink="/explore" class="button secondary">Nueva búsqueda</a></div></section>
+  } @else if (result.status === 'empty') {
+    <section class="panel message-state"><span class="state-icon"><app-icon name="search" /></span><span class="eyebrow">SIN DATOS DE EJEMPLO</span><h1>Aún no hay un análisis para esta búsqueda.</h1>@if (result.query) { <p class="empty-query">“{{ result.query }}”</p> }<p>Por ahora, los resultados mock están disponibles para productos de ejemplo en México. Puedes explorar el análisis de anillos de plata ajustables mientras ampliamos esta pantalla.</p><div class="state-actions"><a routerLink="/analysis/demo-rings" class="button primary">Ver análisis de ejemplo<app-icon name="arrow" /></a><a routerLink="/explore" class="button secondary">Nueva búsqueda</a></div></section>
+  } @else if (result.status === 'saved') {
+    <header class="analysis-heading"><div class="heading-copy"><span class="eyebrow">INTELIGENCIA DE MERCADO <span class="eyebrow-separator">/</span> INVESTIGACIÓN GUARDADA</span><h1>{{ result.item.query }}</h1><p>Estos parámetros ya están en PostgreSQL y seguirán disponibles al recargar. Puedes consultar productos de Mercado Libre en el país elegido e importar una serie de Google Trends.</p><div class="heading-tags"><span><app-icon name="globe" />{{ countryLabel(result.item.country) }}</span><span><app-icon name="clock" />{{ result.item.period_months }} meses</span><span><app-icon name="check" />Guardada</span></div></div><a routerLink="/explore" class="button primary detail-action">Nueva investigación<app-icon name="arrow" /></a></header>
+    <div class="data-notice"><app-icon name="info" /><p><strong>Datos reales preparados; score exploratorio bajo demanda.</strong> La muestra y Trends alimentan señales observadas. El score solo se calcula al introducir un escenario financiero completo y si la evidencia temporal es suficiente; no representa ventas ni mide competencia.</p></div>
+    <section class="panel saved-details"><span class="eyebrow">DATOS REGISTRADOS</span><h2>Tu punto de partida</h2><dl><div><dt>Producto</dt><dd>{{ result.item.query }}</dd></div><div><dt>País</dt><dd>{{ countryLabel(result.item.country) }}</dd></div><div><dt>Categoría</dt><dd>{{ result.item.category ?? 'Todas las categorías' }}</dd></div><div><dt>Periodo</dt><dd>Últimos {{ result.item.period_months }} meses</dd></div><div><dt>Guardado el</dt><dd>{{ formatDate(result.item.created_at) }}</dd></div><div><dt>Estado</dt><dd>Fuentes disponibles bajo demanda</dd></div></dl><div class="saved-actions"><a routerLink="/analyses" class="button secondary">Volver a Mis análisis</a></div></section>
+    @let trendState = trendsFor(result.item.id);
+    <section class="trends-section" aria-labelledby="trends-title">
+      <div class="marketplace-heading"><div><span class="eyebrow">GOOGLE TRENDS / {{ countryLabel(result.item.country) }}</span><h2 id="trends-title">Interés de búsqueda</h2><p>Exporta «Interés a lo largo del tiempo» para “{{ result.item.query }}” en {{ countryLabel(result.item.country) }} y carga su CSV. El índice relativo va de 0 a 100; no representa volumen de búsquedas ni ventas.</p></div></div>
+      <div class="trends-upload panel"><label for="trends-file">CSV de Google Trends</label><input id="trends-file" type="file" accept=".csv,text/csv" (change)="selectTrendsFile($event)"><button type="button" class="button primary" [disabled]="!selectedTrendsFile() || trendState?.status === 'uploading'" (click)="uploadTrends(result.item)">{{ trendState?.status === 'uploading' ? 'Importando…' : 'Importar CSV' }}</button></div>
+      @if (trendState?.status === 'loading' || trendState?.status === 'uploading') { <div class="panel marketplace-loading" role="status">{{ trendState?.status === 'uploading' ? 'Importando la serie…' : 'Cargando la serie guardada…' }}</div> }
+      @if (trendsError(result.item.id); as message) { <div class="panel marketplace-message" role="alert"><app-icon name="info" /><p>{{ message }}</p></div> }
+      @if (trendsResult(result.item.id); as trendData) {
+        @if (trendData.source === 'google_trends_csv_geo_unverified') { <div class="data-notice"><app-icon name="info" /><p>Este formato CSV no incluye el país dentro del archivo. Se guardó para {{ countryLabel(result.item.country) }} según la investigación abierta; verifica que elegiste ese país al exportarlo desde Google Trends.</p></div> }
+        @if (trendsChart(); as trendOption) { <div class="panel chart-card"><div class="chart-heading"><div><h3>Interés a lo largo del tiempo</h3><p>{{ trendData.points.length }} observaciones · {{ trendData.points[0]?.date }}–{{ trendData.points[trendData.points.length - 1]?.date }} · importado el {{ formatDate(trendData.imported_at!) }}</p></div><span class="chart-tag">CSV REAL</span></div><app-analysis-chart [option]="trendOption" [description]="'Índice relativo de Google Trends para ' + result.item.query + ' en ' + countryLabel(result.item.country)" /><p class="chart-footnote">Fuente: Google Trends, CSV exportado por el usuario. Los valores &lt;1 se muestran como dato censurado y crean un hueco en la línea. Se conserva todo el rango del CSV; el periodo guardado de la investigación no lo recorta.</p></div> }
+        @else { <div class="panel marketplace-message"><app-icon name="chart" /><p>Aún no hay una serie importada para esta investigación.</p></div> }
+      }
+    </section>
+    <section class="forecast-section" aria-labelledby="forecast-title">
+      <div class="marketplace-heading"><div><span class="eyebrow">SERIE TEMPORAL / GOOGLE TRENDS</span><h2 id="forecast-title">Pronóstico validado</h2><p>Compara métodos sencillos sobre periodos anteriores antes de proyectar tres puntos del índice relativo. No extrapola ventas ni búsquedas absolutas.</p></div></div>
+      @if (forecastFor(result.item.id)?.status === 'loading') { <div class="panel marketplace-loading" role="status">Validando la serie…</div> }
+      @if (forecastError(result.item.id); as message) { <div class="panel marketplace-message" role="alert"><app-icon name="info" /><p>{{ message }}</p></div> }
+      @if (forecastResult(result.item.id); as forecastData) {
+        @if (forecastData.status === 'ready') {
+          <div class="forecast-summary panel"><div><span>Método elegido</span><strong>{{ forecastModelLabel(forecastData.selected_model) }}</strong></div><div><span>Frecuencia</span><strong>{{ forecastFrequencyLabel(forecastData.frequency) }}</strong></div><div><span>Dirección reciente</span><strong>{{ forecastData.direction }}</strong></div><div><span>Error validado</span><strong>{{ formatFeature(forecastData.backtest_mae) }} puntos</strong></div></div>
+          @if (forecastChart(); as option) { <div class="panel chart-card"><div class="chart-heading"><div><h3>Histórico y próximos {{ forecastData.horizon }} puntos</h3><p>{{ forecastData.used_point_count }} observaciones utilizadas · {{ forecastData.backtest_origins }} orígenes de validación</p></div><span class="chart-tag">VALIDADO</span></div><app-analysis-chart [option]="option" [description]="'Histórico y pronóstico validado del índice de Google Trends para ' + result.item.query" /><p class="chart-footnote">El rango punteado es orientativo: usa errores previos por horizonte y un mínimo de 5 puntos. No es un intervalo de confianza garantizado. Se limita a la escala 0–100.</p></div> }
+          <div class="forecast-points panel"><h3>Valores proyectados</h3><dl>@for (point of forecastData.predictions; track point.date) { <div><dt>{{ point.date }}</dt><dd>{{ formatFeature(point.value) }} <span>({{ formatFeature(point.lower) }}–{{ formatFeature(point.upper) }})</span></dd></div> }</dl><p>MAE del método ingenuo: {{ formatFeature(forecastData.naive_mae) }} puntos. @if (forecastData.seasonal_signal) { Se observó una señal estacional en el backtest. }@if (forecastData.censored_count) { Se omitió la historia anterior al último valor &lt;1, sin imputarlo. }</p></div>
+        } @else { <div class="panel marketplace-message"><app-icon name="info" /><p>{{ forecastData.reason }}</p></div> }
+      }
+    </section>
+    @let market = marketplaceFor(result.item.id);
+    <section class="marketplace-section" aria-labelledby="marketplace-title">
+      <div class="marketplace-heading"><div><span class="eyebrow">MERCADO LIBRE / {{ countryLabel(result.item.country) }}</span><h2 id="marketplace-title">Productos relacionados</h2><p>Una consulta obtiene la muestra y prepara el dataset. La categoría y el periodo guardados todavía no filtran productos.</p></div><button type="button" class="button primary" [disabled]="market?.status === 'loading' || datasetFor(result.item.id)?.status === 'reprocessing'" (click)="loadMarketplace(result.item)">{{ market?.status === 'loading' ? 'Consultando…' : market?.status === 'success' ? 'Actualizar y preparar' : 'Consultar y preparar' }}<app-icon name="arrow" /></button></div>
+      @if (market?.status === 'loading') {
+        <div class="marketplace-loading" role="status" aria-live="polite">Consultando Mercado Libre {{ countryLabel(result.item.country) }}…</div>
+      } @else if (marketplaceError(result.item.id); as message) {
+        <div class="panel marketplace-message" role="alert"><app-icon name="info" /><p>{{ message }}</p><button type="button" class="button secondary" (click)="loadMarketplace(result.item)">Reintentar</button></div>
+      } @else if (marketplaceResult(result.item.id); as marketData) {
+        <p class="marketplace-meta">{{ marketData.source === 'catalog' ? 'Productos del catálogo oficial' : 'Publicaciones actuales' }} · Consultado el {{ formatDate(marketData.fetched_at) }} · {{ marketData.items.length }} {{ marketData.items.length === 1 ? 'resultado' : 'resultados' }}</p>
+        @if (marketData.source === 'catalog') { <div class="data-notice"><app-icon name="info" /><p>La búsqueda de publicaciones respondió 403. Estos son productos reales del catálogo oficial: no contienen precios ni enlaces de anuncios.</p></div> }
+        @if (marketData.items.length) {
+          <div class="marketplace-grid">@for (product of marketData.items; track product.id) { <article class="panel marketplace-card">@if (product.image_url) { <img [src]="product.image_url" [alt]="product.title" loading="lazy" referrerpolicy="no-referrer"> } @else { <div class="marketplace-image-empty"><app-icon name="catalog" /></div> }<div><span class="marketplace-id">{{ product.id }}</span><h3>{{ product.title }}</h3>@if (product.price !== null && product.currency) { <strong>{{ product.price | number:'1.2-2' }} {{ product.currency }}</strong> } @else { <span class="marketplace-catalog-tag">Producto sin precio disponible</span> }@if (product.permalink) { <a [href]="product.permalink" target="_blank" rel="noopener noreferrer">Ver publicación en Mercado Libre ↗</a> }</div></article> }</div>
+        } @else { <div class="panel marketplace-message"><app-icon name="search" /><p>Mercado Libre no devolvió productos activos para esta búsqueda.</p></div> }
+      } @else {
+        <div class="panel marketplace-message"><app-icon name="search" /><p>Consulta productos reales de Mercado Libre {{ countryLabel(result.item.country) }}. Si la fuente obtiene publicaciones, podrán incluir precio y enlace; el catálogo oficial mexicano no los incluye.</p></div>
+      }
+      @let datasetState = datasetFor(result.item.id);
+      @if (datasetState?.status === 'loading' || datasetState?.status === 'reprocessing') { <div class="panel marketplace-loading" role="status">{{ datasetState?.status === 'reprocessing' ? 'Reprocesando la muestra guardada…' : 'Cargando el dataset guardado…' }}</div> }
+      @if (datasetError(result.item.id); as message) { <div class="panel marketplace-message" role="alert"><app-icon name="info" /><p>{{ message }}</p></div> }
+      @if (datasetResult(result.item.id); as datasetData) {
+        @if (!datasetData.quality && datasetData.trends.length) { <div class="panel dataset-summary"><div><span class="eyebrow">DATASET ANALÍTICO</span><h3>Serie importada</h3><p>{{ datasetData.trends.length }} puntos de Trends disponibles. Todavía no hay una muestra de productos.</p></div><div class="dataset-actions"><button type="button" class="button secondary" (click)="downloadDataset(result.item)">Descargar JSON para notebook</button></div></div> }
+        @if (datasetData.quality; as quality) {
+          <div class="panel dataset-summary"><div><span class="eyebrow">DATASET ANALÍTICO</span><h3>Preparación de datos</h3><p>Preparado el {{ formatDate(datasetData.prepared_at!) }} · {{ datasetData.trends.length }} puntos de Trends disponibles</p></div><dl><div><dt>Muestra de entrada</dt><dd>{{ quality.source_count }}</dd></div><div><dt>Productos con precio válido</dt><dd>{{ quality.included_count }}</dd></div><div><dt>Duplicados</dt><dd>{{ quality.duplicate_count }}</dd></div><div><dt>Sin precio</dt><dd>{{ quality.missing_price_count }}</dd></div><div><dt>Precio o moneda inválidos</dt><dd>{{ quality.invalid_price_count + quality.invalid_currency_count }}</dd></div><div><dt>Título vacío</dt><dd>{{ quality.missing_title_count }}</dd></div></dl><div class="dataset-actions"><button type="button" class="button secondary" [disabled]="datasetState?.status === 'reprocessing' || market?.status === 'loading'" (click)="reprocessDataset(result.item)">Reprocesar datos guardados sin nueva consulta</button><button type="button" class="button secondary" (click)="downloadDataset(result.item)">Descargar JSON para notebook</button></div><p class="marketplace-footnote">Los precios se conservan en {{ datasetData.products[0]?.currency ?? 'la moneda local' }}; no se aplican tipos de cambio. Las pistas de material provienen del título y no están verificadas.</p></div>
+        }
+      }
+      <p class="marketplace-footnote">La muestra no mide ventas, demanda ni saturación. Se guarda en PostgreSQL para reprocesarla sin volver a consultar. Si usas un proveedor de pago, «Consultar y preparar» y «Actualizar y preparar» inician una ejecución nueva.</p>
+    </section>
+    <section class="features-section" aria-labelledby="features-title">
+      <div class="marketplace-heading"><div><span class="eyebrow">VARIABLES CALCULADAS / DATOS GUARDADOS</span><h2 id="features-title">Señales descriptivas</h2><p>Estas cifras se calculan al abrir la ficha desde los productos depurados y el CSV de Trends. No consultan fuentes externas ni representan ventas, pronósticos o Opportunity Score.</p></div></div>
+      @if (featuresFor(result.item.id)?.status === 'loading') { <div class="panel marketplace-loading" role="status">Calculando variables…</div> }
+      @if (featuresError(result.item.id); as message) { <div class="panel marketplace-message" role="alert"><app-icon name="info" /><p>{{ message }}</p></div> }
+      @if (featuresResult(result.item.id); as featureData) {
+        <div class="feature-grid">
+          <article class="panel feature-card"><span>Productos con precio</span><strong>{{ featureData.market.priced_count }}</strong><p>De {{ featureData.market.source_count ?? '—' }} entradas · cobertura {{ formatFeature(featureData.market.price_coverage_pct, '%') }}</p></article>
+          <article class="panel feature-card"><span>Precio mediano</span><strong>{{ formatFeature(featureData.market.price_median) }}</strong><p>{{ featureData.market.currency }} · sin conversión de divisa</p></article>
+          <article class="panel feature-card"><span>Dispersión de precio</span><strong>{{ formatFeature(featureData.market.price_stddev) }}</strong><p>Desviación estándar · {{ featureData.market.currency }}</p></article>
+          <article class="panel feature-card"><span>Interés reciente</span><strong>{{ formatFeature(featureData.trend.moving_average_3) }}</strong><p>Media de 3 puntos consecutivos · índice 0–100</p></article>
+          <article class="panel feature-card"><span>Crecimiento reciente</span><strong>{{ formatFeature(featureData.trend.growth_3v3_pct, '%') }}</strong><p>Últimos 3 puntos frente a los 3 anteriores</p></article>
+          <article class="panel feature-card"><span>Volatilidad de interés</span><strong>{{ formatFeature(featureData.trend.volatility_index) }}</strong><p>Desviación estándar · {{ featureData.trend.observed_count }} observados · {{ featureData.trend.censored_count }} &lt;1</p></article>
+        </div>
+        <p class="marketplace-footnote">Pistas de material en productos con precio: {{ materialHints(featureData) }}. «—» indica datos insuficientes, una ventana irregular o un denominador igual a cero. Las medias móviles usan observaciones consecutivas sin imputar &lt;1.</p>
+      }
+    </section>
+    <section class="score-section" aria-labelledby="score-title">
+      <div class="marketplace-heading"><div><span class="eyebrow">OPPORTUNITY SCORE / ESCENARIO</span><h2 id="score-title">Puntuación exploratoria</h2><p>Combina crecimiento del índice de Trends, error del pronóstico y rentabilidad por unidad calculada con tus supuestos. Es una fórmula provisional, no una estimación de ventas ni una recomendación comercial.</p></div></div>
+      @let scoreState = scoreFor(result.item.id);
+      <div class="panel score-panel">
+        @if (scoreState?.status === 'loading') { <p role="status">Evaluando evidencia guardada…</p> }
+        @if (scoreState?.status === 'error') { <p class="score-error" role="alert">{{ $any(scoreState).message }}</p> }
+        @if (scoreResult(result.item.id); as scoreData) {
+          <div class="score-result"><div><span class="eyebrow">{{ scoreData.model_version }}</span><strong>{{ scoreData.score === null ? '—' : formatFeature(scoreData.score) }}<small>/100</small></strong><p>{{ scoreData.score === null ? 'Faltan entradas o evidencia para calcular.' : 'Escenario provisional; no predice ventas.' }}</p></div><dl><div><dt>Utilidad por unidad</dt><dd>{{ formatFeature(scoreData.unit_profit) }} {{ scoreData.currency }}</dd></div><div><dt>Margen</dt><dd>{{ formatFeature(scoreData.margin_pct, '%') }}</dd></div><div><dt>ROI</dt><dd>{{ formatFeature(scoreData.roi_pct, '%') }}</dd></div></dl></div>
+          @if (scoreData.missing.length) { <p class="score-missing">Para obtener la puntuación falta: @for (reason of scoreData.missing; track reason) { <span>{{ scoreMissingLabel(reason) }}{{ $last ? '.' : '; ' }}</span> }</p> }
+          <div class="score-components"><span>Crecimiento: {{ formatFeature(scoreData.components.growth) }}</span><span>Estabilidad: {{ formatFeature(scoreData.components.stability) }}</span><span>Margen: {{ formatFeature(scoreData.components.margin) }}</span><span>ROI: {{ formatFeature(scoreData.components.roi) }}</span></div>
+        }
+        <form class="score-form" (submit)="previewScore(result.item, $event)">
+          <h3>Simula tus costos por unidad</h3><p>Introduce importes en la moneda del análisis. No se guardan; al recargar se borran. El precio mediano de la muestra es solo referencia: {{ formatFeature(featuresResult(result.item.id)?.market?.price_median ?? null) }} {{ result.item.country === 'MX' ? 'MXN' : result.item.country === 'CO' ? 'COP' : 'ARS' }}.</p>
+          <div class="score-input-grid">
+            <label>Precio de venta<input type="number" name="sale_price" min="0.01" step="0.01" required (input)="setFinancial('sale_price', $event, result.item.id)"></label>
+            <label>Costo de producto<input type="number" name="product_cost" min="0" step="0.01" required (input)="setFinancial('product_cost', $event, result.item.id)"></label>
+            <label>Envío<input type="number" name="shipping_cost" min="0" step="0.01" required (input)="setFinancial('shipping_cost', $event, result.item.id)"></label>
+            <label>Comisión (%)<input type="number" name="commission_pct" min="0" max="100" step="0.01" required (input)="setFinancial('commission_pct', $event, result.item.id)"></label>
+            <label>Otros costos<input type="number" name="other_costs" min="0" step="0.01" required (input)="setFinancial('other_costs', $event, result.item.id)"></label>
+          </div>
+          <h3>Pesos configurables</h3><p>Deben sumar 1. Se aplican a cuatro componentes de 0–100; ningún peso representa demanda absoluta ni competencia.</p>
+          <div class="score-input-grid">
+            <label>Crecimiento<input type="number" name="weight_growth" min="0" max="1" step="0.01" required [value]="scoreWeights.growth" (input)="setWeight('growth', $event, result.item.id)"></label>
+            <label>Estabilidad<input type="number" name="weight_stability" min="0" max="1" step="0.01" required [value]="scoreWeights.stability" (input)="setWeight('stability', $event, result.item.id)"></label>
+            <label>Margen<input type="number" name="weight_margin" min="0" max="1" step="0.01" required [value]="scoreWeights.margin" (input)="setWeight('margin', $event, result.item.id)"></label>
+            <label>ROI<input type="number" name="weight_roi" min="0" max="1" step="0.01" required [value]="scoreWeights.roi" (input)="setWeight('roi', $event, result.item.id)"></label>
+          </div>
+          <button type="submit" class="button primary" [disabled]="scoreState?.status === 'previewing'">{{ scoreState?.status === 'previewing' ? 'Calculando…' : 'Calcular escenario' }}</button>
+        </form>
+        <p class="marketplace-footnote">Crecimiento: 50 + cambio porcentual reciente, acotado a 0–100. Estabilidad: 100 − 5 × MAE validado. Margen: 2,5 × margen %. ROI: ROI %, ambos acotados a 0–100. Con pérdida, el resultado es 0. Sin datos indispensables permanece vacío. La muestra mínima es de 8 productos con precio; no se usa su cantidad como demanda o competencia.</p>
+      </div>
+    </section>
+    <section class="clusters-section" aria-labelledby="real-clusters-title">
+      <div class="marketplace-heading"><div><span class="eyebrow">SEGMENTACIÓN / PRODUCTOS GUARDADOS</span><h2 id="real-clusters-title">Grupos de productos</h2><p>K-Means usa el precio y, con menor peso, pistas de material extraídas del título. Los grupos describen la muestra disponible; no estiman ventas, competencia ni rentabilidad.</p></div></div>
+      @if (clustersFor(result.item.id)?.status === 'loading') { <div class="panel marketplace-loading" role="status">Evaluando segmentos…</div> }
+      @if (clustersError(result.item.id); as message) { <div class="panel marketplace-message" role="alert"><app-icon name="info" /><p>{{ message }}</p></div> }
+      @if (clustersResult(result.item.id); as clusterData) {
+        @if (clusterData.status === 'ready') {
+          <p class="marketplace-meta">{{ clusterData.clustered_count }} de {{ clusterData.product_count }} productos agrupados · {{ clusterData.selected_k }} grupos · silueta {{ formatFeature(clusterData.silhouette) }}@if (clusterData.excluded_outlier_count) { · {{ clusterData.excluded_outlier_count }} precio atípico excluido del ajuste }</p>
+          <div class="real-cluster-grid">
+            @for (segment of clusterData.segments; track segment.number) {
+              <article class="panel real-cluster-card"><span class="eyebrow">GRUPO {{ segment.number }}</span><h3>{{ segment.label }}</h3><p>{{ segment.count }} productos ({{ formatFeature(segment.share_pct, '%') }})</p><dl><div><dt>Precio mediano</dt><dd>{{ formatFeature(segment.price_median) }} {{ clusterData.currency }}</dd></div><div><dt>Rango de precios</dt><dd>{{ formatFeature(segment.price_min) }}–{{ formatFeature(segment.price_max) }} {{ clusterData.currency }}</dd></div></dl><span class="example-label">Publicaciones representativas</span><ul>@for (example of segment.examples; track example.external_id) { <li>{{ example.title }} · {{ formatFeature(example.price) }} {{ clusterData.currency }}</li> }</ul></article>
+            }
+          </div>
+          <p class="marketplace-footnote">La silueta mide separación interna de esta muestra (−1 a 1), no calidad comercial. Los grupos se recalculan al leer datos guardados; ningún grupo se recomienda aún.</p>
+        } @else { <div class="panel marketplace-message"><app-icon name="info" /><p>{{ clusterData.reason }}</p></div> }
+      }
+    </section>
+  } @else {
+    @let item = result.view.fixture;
+    @let period = result.view.period;
+    <header class="analysis-heading"><div class="heading-copy"><span class="eyebrow">INTELIGENCIA DE MERCADO <span class="eyebrow-separator">/</span> RESULTADO</span><h1>{{ item.product }}</h1><p>{{ item.summary }}</p><div class="heading-tags"><span><app-icon name="globe" />{{ item.country }}</span><span><app-icon name="catalog" />{{ item.category }}</span><span><app-icon name="clock" />{{ periodLabels[period] }}</span></div></div><a [routerLink]="['/opportunity', item.id]" class="button primary detail-action">Ver oportunidad<app-icon name="arrow" /></a></header>
+
+    <div class="data-notice"><app-icon name="info" /><p><strong>Datos completamente ficticios.</strong> Las métricas y visualizaciones son ejemplos de interfaz; no hay consultas externas, clustering calculado ni pronóstico estadístico. El periodo solo recorta la serie de interés mostrada.</p></div>
+
+    <section class="metric-grid" aria-label="Métricas de ejemplo">
+      <article class="panel metric score-card"><span>Opportunity Score</span><strong>{{ item.score }}<small>/100</small></strong><p>Valor ilustrativo, sin fórmula final</p></article>
+      <article class="panel metric"><span>ROI estimado</span><strong>{{ item.roi }}<small>%</small></strong><p>Referencia fija de la demo</p></article>
+      <article class="panel metric"><span>Margen neto</span><strong>{{ item.netMargin }}<small>%</small></strong><p>Referencia de la demo</p></article>
+      <article class="panel metric"><span>Competencia</span><strong class="word-value">{{ item.competition }}</strong><p>{{ item.competitorCount }} competidores ficticios</p></article>
+      <article class="panel metric"><span>Tendencia</span><strong class="word-value trend-value"><app-icon name="trend" />{{ item.trend }}</strong><p>Clasificación ilustrativa</p></article>
+    </section>
+
+    @if (charts(); as visual) {
+      <div class="section-lead"><div><span class="eyebrow">01 / SEÑALES DE MERCADO</span><h2>Interés y dirección</h2></div><span>Series simuladas · {{ periodLabels[period] }}</span></div>
+      <div class="chart-grid trend-grid">
+        <section class="panel chart-card" aria-labelledby="interest-title"><div class="chart-heading"><div><h3 id="interest-title">Evolución del interés</h3><p>Índice relativo · escala 0–100</p></div><span class="chart-tag">HISTÓRICO DEMO</span></div><app-analysis-chart [option]="visual.interest" [description]="'Interés relativo ilustrativo para ' + item.product + '. ' + rangeSummary()" /><p class="chart-footnote">{{ rangeSummary() }} No representa búsquedas ni ventas reales.</p></section>
+        <section class="panel chart-card" aria-labelledby="forecast-title"><div class="chart-heading"><div><h3 id="forecast-title">Proyección ilustrativa</h3><p>Próximos 3 puntos de ejemplo</p></div><span class="chart-tag amber">SIN MODELO</span></div><app-analysis-chart [option]="visual.forecast" [description]="'Extensión ilustrativa de la serie de ' + item.product + '. Los tres puntos futuros no son un pronóstico estadístico.'" /><p class="chart-footnote"><span class="legend-line"></span>Histórico demo <span class="legend-line dashed"></span>Extensión ficticia. No es una predicción.</p></section>
+      </div>
+
+      <div class="section-lead"><div><span class="eyebrow">02 / CONTEXTO COMERCIAL</span><h2>Precios y demanda</h2></div><span>Mercado: {{ item.country }} · {{ item.currency }}</span></div>
+      <div class="chart-grid halves">
+        <section class="panel chart-card" aria-labelledby="prices-title"><div class="chart-heading"><div><h3 id="prices-title">Distribución de precios</h3><p>Publicaciones ficticias por rango</p></div><span class="chart-tag">DEMO</span></div><app-analysis-chart [option]="visual.prices" [description]="'Histograma de cinco rangos de precios de ejemplo para ' + item.product" /><p class="chart-footnote">Precio promedio ilustrativo: <strong>{{ item.averagePrice | number:'1.0-0' }} {{ item.currency }}</strong>.</p></section>
+        <section class="panel chart-card" aria-labelledby="demand-title"><div class="chart-heading"><div><h3 id="demand-title">Precio vs. demanda</h3><p>Índice ficticio, no volumen de ventas</p></div><span class="chart-tag">DEMO</span></div><app-analysis-chart [option]="visual.priceDemand" [description]="'Dispersión de precios frente a un índice de demanda ficticio para ' + item.product" /><p class="chart-footnote">Cada punto es una observación inventada para ilustrar la vista.</p></section>
+      </div>
+
+      <div class="section-lead"><div><span class="eyebrow">03 / SEGMENTOS</span><h2>Una oportunidad para explorar</h2></div><span>Grupos de ejemplo · sin K-Means</span></div>
+      <div class="chart-grid cluster-grid"><section class="panel chart-card" aria-labelledby="clusters-title"><div class="chart-heading"><div><h3 id="clusters-title">Visualización de segmentos</h3><p>Precio frente a índice de demanda ficticio</p></div><span class="chart-tag">AGRUPACIÓN DEMO</span></div><app-analysis-chart [option]="visual.clusters" [description]="'Tres segmentos visuales ficticios para ' + item.product + '. El segmento dos es el recomendado en esta demostración.'" /><div class="segment-list">@for (cluster of item.clusters; track cluster.number) { <span [class.recommended]="cluster.recommended"><i [class]="'segment-dot segment-' + cluster.number"></i>{{ cluster.number }}. {{ cluster.label }}</span> }</div></section>
+        @if (recommendedCluster(); as cluster) { <aside class="recommended panel" aria-labelledby="recommended-title"><div class="recommend-top"><span class="eyebrow"><app-icon name="target" />CLUSTER RECOMENDADO</span><span>DEMO</span></div><div class="recommend-symbol" aria-hidden="true"><app-icon name="sparkles" /></div><h3 id="recommended-title">{{ cluster.label }}</h3><p>{{ cluster.description }}</p><div class="cluster-stats"><div><span>Precio promedio</span><strong>{{ cluster.averagePrice | number:'1.0-0' }} {{ item.currency }}</strong></div><div><span>Competidores</span><strong>{{ cluster.competitorCount }}</strong></div><div><span>Demanda</span><strong>{{ cluster.demand }}</strong></div><div><span>Margen esperado</span><strong>{{ cluster.expectedMargin }}%</strong></div></div><a [routerLink]="['/opportunity', item.id]" class="recommend-link">Explorar el detalle<app-icon name="arrow" /></a></aside> }
+      </div>
+    }
+    <div class="closing-note"><app-icon name="info" />Los valores de este análisis son fixtures para la interfaz. El detalle permite simular costos con tus propios supuestos; los modelos analíticos siguen pendientes.</div>
+  }
+</div>

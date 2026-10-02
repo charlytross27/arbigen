@@ -1,0 +1,10 @@
+@let page = content();
+<div class="placeholder-heading"><a routerLink="/" class="text-link"><span aria-hidden="true">←</span>Volver al Dashboard</a><span class="phase-label">{{ kind() === 'not-found' ? 'Ruta no encontrada' : 'Vista previa · En desarrollo' }}</span></div>
+<section class="placeholder panel">
+  <div class="preview-art" aria-hidden="true"><div class="art-circle"></div><span class="art-icon"><app-icon [name]="page.icon" /></span><span class="art-sparkle"><app-icon name="sparkles" /></span></div>
+  <span class="eyebrow">{{ page.eyebrow }}</span><h1>{{ page.title }}</h1><p class="description">{{ page.description }}</p>
+  @if (kind() !== 'not-found') { <span class="coming-soon"><span></span>Disponible en una próxima iteración</span> }
+  @if (page.steps.length) { <div class="steps">@for (step of page.steps; track step; let index = $index) { <div class="step"><span>{{ index + 1 }}</span><p>{{ step }}</p></div> }</div> }
+  <a routerLink="/" class="button primary">Explorar el Dashboard<app-icon name="arrow" /></a>
+</section>
+@if (kind() !== 'not-found') { <div class="scope-note"><app-icon name="info" /><p>Estamos construyendo Arbigen paso a paso. Ya puedes explorar oportunidades, simular rentabilidad y probar el Estudio IA de demostración.</p></div> }

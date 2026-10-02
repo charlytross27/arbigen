@@ -1,0 +1,23 @@
+:host { display: block; }
+.placeholder-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 25px; }
+.phase-label { color: #929c85; font-size: 12px; }
+.placeholder { display: flex; flex-direction: column; align-items: center; padding: 48px 30px; text-align: center; min-height: 550px; justify-content: center; }
+.preview-art { width: 180px; height: 130px; position: relative; display: grid; place-items: center; margin-bottom: 24px; }
+.art-circle { position: absolute; width: 120px; height: 120px; border: 1px solid #e4e9d9; border-radius: 50%; }
+.art-circle::after { content: ''; position: absolute; inset: -17px; border: 1px solid #f0f2e9; border-radius: 50%; }
+.art-icon { width: 80px; height: 80px; border-radius: 22px; background: #f0f4e7; display: grid; place-items: center; transform: rotate(-8deg); color: #708d55; z-index: 1; box-shadow: 0 7px 15px #314d3010; }
+.art-icon app-icon { width: 36px; height: 36px; }
+.art-sparkle { position: absolute; right: 13px; top: 10px; color: #9eae82; }
+.eyebrow { color: #8b9b73; font-size: 12px; }
+h1 { font-size: clamp(24px, 3vw, 33px); letter-spacing: -.9px; line-height: 1.3; margin: 15px 0; font-weight: 500; }
+.description { max-width: 510px; line-height: 1.9; font-size: 13px; color: #849078; }
+.coming-soon { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #8d9c79; margin-top: 17px; }
+.coming-soon span { width: 5px; height: 5px; border-radius: 50%; background: #93a47d; }
+.steps { display: flex; width: 100%; max-width: 580px; margin: 34px 0; padding: 22px 0; border-top: 1px solid #edf0e6; border-bottom: 1px solid #edf0e6; }
+.step { flex: 1; padding: 0 12px; }
+.step > span { display: inline-grid; place-items: center; width: 22px; height: 22px; background: #f4f6ef; color: #8c9b76; border-radius: 50%; font-size: 11px; margin-bottom: 10px; }
+.step p { font-size: 13px; color: #758364; line-height: 1.6; }
+.scope-note { display: flex; align-items: center; justify-content: center; gap: 9px; margin: 24px auto; max-width: 650px; color: #929c85; font-size: 12px; line-height: 1.8; }
+.scope-note app-icon { width: 14px; height: 14px; }
+.placeholder > .button { margin-top: 20px; }
+@media (max-width: 560px) { .placeholder { padding: 35px 20px; } .phase-label { font-size: 11px; } .placeholder-heading { align-items: flex-start; flex-direction: column; } .steps { gap: 14px; flex-direction: column; align-items: flex-start; } .step { display: flex; align-items: center; gap: 10px; padding: 0; } .step > span { margin: 0; } .scope-note { align-items: flex-start; } }
