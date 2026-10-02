@@ -16,7 +16,7 @@ Para probar localmente:
 sudo pg_ctlcluster 18 main start
 pg_lsclusters                     # debe mostrar online
 cd backend
-./.venv/bin/alembic upgrade head # aplica 0004 si aún falta
+./.venv/bin/alembic upgrade head # aplica las migraciones locales pendientes
 ./.venv/bin/python -m uvicorn app.main:app --reload --port 8000
 ```
 
@@ -40,4 +40,4 @@ Si el conteo coincide con tus datos, haz una copia de la base y ejecuta el mismo
 
 Los proyectos Vercel `arbigen` y `arbigen-web` compilan actualmente el mismo frontend. El primero no representa Development y genera un despliegue adicional al publicar `main`; `arbigen-web` es el dominio usado por el rewrite y por `CORS_ORIGINS`. No cambies ese dominio ni borres un proyecto sin revisar antes los enlaces y usuarios que puedan usarlo. Para probar una versión alojada de Development en el futuro hará falta otra base o rama de Neon, nunca conectar Preview a la base de Production.
 
-Al 2 de octubre de 2026, la base local `arbigen` quedó en la revisión `0004`, se registró una cuenta local y se reasignó la investigación histórica a ella. Permanecen 1 investigación, 12 productos, 273 puntos de Trends y 1 muestra. El respaldo previo está en `backend/local-backups/`, ignorado por Git. Esta operación no copió ningún dato a Neon.
+Al 2 de octubre de 2026, la base local `arbigen` quedó en la revisión `0005`, se registró una cuenta local y se reasignó la investigación histórica a ella. Permanecen 1 investigación, 12 productos, 273 puntos de Trends y 1 muestra; todavía no hay costos financieros aportados por el usuario. Se hizo otro respaldo local antes de 0005. La nueva ruta `/opportunity/saved/:id` permite guardar un escenario por investigación sin consultar Apify. El respaldo previo está en `backend/local-backups/`, ignorado por Git. Esta operación no copió ningún dato a Neon.

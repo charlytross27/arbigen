@@ -1,0 +1,56 @@
+<div class="opportunity-page saved-opportunity-page">
+  @let view = state();
+  <div class="page-top"><a [routerLink]="view.status === 'ready' ? ['/analysis', view.analysis.id] : '/analyses'" class="text-link"><span aria-hidden="true">←</span>Volver al análisis</a><span class="demo-badge"><i></i>DATOS DE TU CUENTA</span></div>
+
+  @if (view.status === 'loading') {
+    <div class="loading-state" role="status">Cargando datos de la investigación…</div>
+  } @else if (view.status === 'missing') {
+    <section class="panel message-state"><app-icon name="search" /><h1>Investigación no encontrada</h1><p>Comprueba el enlace o vuelve a tus análisis.</p><a routerLink="/analyses" class="button primary">Ver Mis análisis</a></section>
+  } @else if (view.status === 'error') {
+    <section class="panel message-state" role="alert"><app-icon name="info" /><h1>No pudimos abrir la oportunidad</h1><p>Comprueba la API local y vuelve a intentarlo.</p><button type="button" class="button primary" (click)="retry()">Reintentar</button></section>
+  } @else {
+    <header class="opportunity-heading"><div class="heading-main"><span class="eyebrow">INTELIGENCIA DE MERCADO / RENTABILIDAD</span><h1>{{ view.analysis.query }}</h1><p>Elige una publicación de tu muestra y prueba una hipótesis de precio y costos por unidad.</p><div class="heading-tags"><span><app-icon name="globe" />{{ countryLabel(view.analysis.country) }}</span><span><app-icon name="catalog" />{{ view.dataset.products.length }} productos con precio</span><span><app-icon name="trend" />{{ view.dataset.trends.length }} puntos de Trends</span></div></div></header>
+    <div class="data-notice"><app-icon name="info" /><p><strong>La muestra es una referencia, no una previsión de ventas.</strong> El costo del proveedor, envío, comisión y precio de venta los introduces tú. No se estiman demanda ni competencia y esta página no ejecuta nuevas búsquedas.</p></div>
+
+    @if (!view.dataset.products.length) {
+      <section class="panel message-state"><app-icon name="search" /><h2>Aún no hay productos preparados</h2><p>Vuelve a la investigación para preparar una muestra cuando decidas hacer una consulta. Importar Trends por sí solo no crea productos.</p><a [routerLink]="['/analysis', view.analysis.id]" class="button primary">Volver al análisis</a></section>
+    } @else {
+      <div class="content-grid">
+        <div class="detail-column">
+          <section class="panel detail-card" aria-labelledby="product-title"><div class="section-heading"><div><span class="eyebrow">MUESTRA GUARDADA</span><h2 id="product-title">Producto de referencia</h2></div><span class="small-tag">{{ view.dataset.products.length }} DISPONIBLES</span></div>
+            <label class="product-select-label" for="selected-product">Selecciona una publicación</label>
+            <select id="selected-product" class="product-select" [value]="selectedProductId()" (change)="selectProduct($event)">
+              <option value="">Selecciona un producto</option>
+              @for (product of view.dataset.products; track product.id) { <option [value]="product.id">{{ product.title }} · {{ product.price }} {{ product.currency }}</option> }
+            </select>
+            @if (selectedProduct(); as product) {
+              <div class="selected-product"><strong>{{ product.title }}</strong><p>Precio observado en la muestra: {{ +product.price | number:'1.2-2' }} {{ product.currency }}</p><small>Es una referencia externa; tu precio de venta y tus costos son supuestos independientes.</small></div>
+            } @else if (savedScenario(); as previous) {
+              <div class="selected-product"><strong>Referencia guardada: {{ previous.product_title }}</strong><p>{{ +previous.reference_price | number:'1.2-2' }} {{ previous.currency }}</p><small>La muestra cambió y esta publicación ya no figura entre los productos actuales. Selecciona otra para actualizar el escenario.</small></div>
+            }
+          </section>
+          <section class="panel detail-card" aria-labelledby="context-title"><div class="section-heading"><div><span class="eyebrow">LÍMITES DE LA MUESTRA</span><h2 id="context-title">Qué sabemos y qué falta</h2></div></div><div class="variable-list"><div><span class="variable-mark"><app-icon name="check" /></span><div><strong>Precios observados</strong><p>{{ view.dataset.products.length }} productos depurados, obtenidos de una muestra parcial.</p></div></div><div><span class="variable-mark"><app-icon name="check" /></span><div><strong>Interés relativo</strong><p>{{ view.dataset.trends.length }} puntos de Google Trends guardados; no son ventas.</p></div></div><div><span class="variable-mark"><app-icon name="info" /></span><div><strong>Costos de tu operación</strong><p>Proveedor, logística y comisión deben conocerse para evaluar la utilidad.</p></div></div></div></section>
+          @if (savedScenario(); as previous) { <section class="panel detail-card saved-note"><h2>Escenario guardado</h2><p>Se conserva con la referencia de producto y los importes que registraste. Puedes descargarlo para el cuaderno de ciencia de datos.</p><button type="button" class="button secondary" (click)="downloadScenario()">Descargar escenario JSON</button><dl><div><dt>Utilidad por unidad</dt><dd>{{ +previous.unit_profit | number:'1.2-2' }} {{ previous.currency }}</dd></div><div><dt>Margen</dt><dd>{{ previous.margin_pct === null ? '—' : previous.margin_pct + '%' }}</dd></div><div><dt>ROI</dt><dd>{{ previous.roi_pct === null ? '—' : previous.roi_pct + '%' }}</dd></div></dl></section> }
+        </div>
+
+        <section class="panel simulator" aria-labelledby="simulator-title">
+          <div class="simulator-heading"><span class="eyebrow"><app-icon name="chart" /> SIMULADOR POR UNIDAD</span><span class="live-tag"><i></i>VISTA PREVIA</span></div><h2 id="simulator-title">Pon tus números sobre la mesa.</h2><p class="simulator-intro">Introduce importes en {{ currency() }}. El resultado cambia al editar y se guarda solo cuando pulsas «Guardar escenario».</p>
+          <div class="input-grid">
+            <div class="field"><label for="product-cost">Costo del proveedor</label><div class="input-wrap"><span>$</span><input id="product-cost" type="number" inputmode="decimal" min="0" step="0.01" [value]="inputs().productCost" (input)="updateInput('productCost', $event)" [attr.aria-invalid]="!!visibleFieldError('productCost')" aria-describedby="product-cost-error"><small>{{ currency() }}</small></div><p id="product-cost-error" class="field-error">{{ visibleFieldError('productCost') }}</p></div>
+            <div class="field"><label for="shipping-cost">Costo de envío</label><div class="input-wrap"><span>$</span><input id="shipping-cost" type="number" inputmode="decimal" min="0" step="0.01" [value]="inputs().shippingCost" (input)="updateInput('shippingCost', $event)" [attr.aria-invalid]="!!visibleFieldError('shippingCost')" aria-describedby="shipping-cost-error"><small>{{ currency() }}</small></div><p id="shipping-cost-error" class="field-error">{{ visibleFieldError('shippingCost') }}</p></div>
+            <div class="field"><label for="commission">Comisión marketplace</label><div class="input-wrap"><input id="commission" type="number" inputmode="decimal" min="0" max="100" step="0.01" [value]="inputs().commissionPercent" (input)="updateInput('commissionPercent', $event)" [attr.aria-invalid]="!!visibleFieldError('commissionPercent')" aria-describedby="commission-error"><small>%</small></div><p id="commission-error" class="field-error">{{ visibleFieldError('commissionPercent') }}</p></div>
+            <div class="field"><label for="other-costs">Otros gastos</label><div class="input-wrap"><span>$</span><input id="other-costs" type="number" inputmode="decimal" min="0" step="0.01" [value]="inputs().otherCosts" (input)="updateInput('otherCosts', $event)" [attr.aria-invalid]="!!visibleFieldError('otherCosts')" aria-describedby="other-costs-error"><small>{{ currency() }}</small></div><p id="other-costs-error" class="field-error">{{ visibleFieldError('otherCosts') }}</p></div>
+            <div class="field sale-field"><label for="sale-price">Tu precio de venta</label><div class="input-wrap"><span>$</span><input id="sale-price" type="number" inputmode="decimal" min="0" step="0.01" [value]="inputs().salePrice" (input)="updateInput('salePrice', $event)" [attr.aria-invalid]="!!visibleFieldError('salePrice')" aria-describedby="sale-price-error"><small>{{ currency() }}</small></div><p id="sale-price-error" class="field-error">{{ visibleFieldError('salePrice') }}</p></div>
+          </div>
+          @if (simulation(); as calc) {
+            <div class="results" aria-live="polite"><div class="results-lead"><span>Vista previa por unidad</span><button type="button" (click)="restore()">{{ savedScenario() ? 'Restablecer valores guardados' : 'Borrar valores' }}</button></div><div class="result-main" [class.loss]="calc.profit < 0"><span>Ganancia estimada</span><strong>{{ calc.profit | number:'1.2-2' }} <small>{{ currency() }}</small></strong><p>{{ calc.profit < 0 ? 'Pérdida con estos supuestos' : calc.profit === 0 ? 'Sin ganancia ni pérdida' : 'Después de costos y comisión' }}</p></div><div class="result-grid"><div><span>Costo total</span><strong>{{ calc.totalCost | number:'1.2-2' }} <small>{{ currency() }}</small></strong></div><div><span>Comisión</span><strong>{{ calc.commissionCost | number:'1.2-2' }} <small>{{ currency() }}</small></strong></div><div><span>Margen sobre venta</span><strong>@if (calc.marginPercent === null) { — } @else { {{ calc.marginPercent | number:'1.1-1' }}% }</strong></div><div><span>ROI sobre costo</span><strong>@if (calc.roiPercent === null) { — } @else { {{ calc.roiPercent | number:'1.1-1' }}% }</strong></div></div><div class="break-even"><span>Precio de equilibrio</span><strong>@if (calc.breakEvenPrice === null) { No existe con estos costos y comisión } @else { {{ calc.breakEvenPrice | number:'1.2-2' }} {{ currency() }} }</strong></div></div>
+          } @else { <div class="invalid-results" role="status">Completa los cinco importes para calcular la rentabilidad.</div> }
+          @if (saveError()) { <p class="save-feedback error" role="alert">{{ saveError() }}</p> }
+          @if (saveMessage()) { <p class="save-feedback success" role="status">{{ saveMessage() }}</p> }
+          <button type="button" class="button primary save-button" [disabled]="!selectedProduct() || !simulation() || saving()" (click)="save()">{{ saving() ? 'Guardando…' : 'Guardar escenario' }}</button>
+          <p class="formula-note"><app-icon name="info" />Costo total = proveedor + envío + otros gastos + comisión sobre venta. Margen = utilidad ÷ precio de venta; ROI = utilidad ÷ costo total. No incluye impuestos, devoluciones ni publicidad salvo que los agregues a otros gastos.</p>
+        </section>
+      </div>
+    }
+  }
+</div>

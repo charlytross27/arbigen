@@ -5,20 +5,12 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from app.modules.features.domain import FeatureReport
 from app.modules.forecasting.domain import ForecastReport
+from app.modules.profitability.model import FinancialAssumptions, calculate_profitability
 
 
 MODEL_VERSION = "exploratory-v1"
 HUNDRED = Decimal(100)
 CENT = Decimal("0.01")
-
-
-@dataclass(frozen=True)
-class FinancialAssumptions:
-    sale_price: Decimal
-    product_cost: Decimal
-    shipping_cost: Decimal
-    commission_pct: Decimal
-    other_costs: Decimal
 
 
 @dataclass(frozen=True)
@@ -86,16 +78,14 @@ def calculate_score(
                    assumptions.commission_pct, assumptions.other_costs)
         if any(not value.is_finite() or value < 0 for value in amounts) or assumptions.sale_price <= 0 or assumptions.commission_pct > 100:
             raise ValueError("El precio debe ser positivo; costos y comisión deben ser válidos.")
-        commission_cost = _round(assumptions.sale_price * assumptions.commission_pct / HUNDRED)
-        total_cost = assumptions.product_cost + assumptions.shipping_cost + assumptions.other_costs + commission_cost
-        unit_profit = assumptions.sale_price - total_cost
-        margin_pct = _round(unit_profit / assumptions.sale_price * HUNDRED)
-        if total_cost > 0:
-            roi_pct = _round(unit_profit / total_cost * HUNDRED)
-        else:
+        economics = calculate_profitability(assumptions)
+        commission_cost = economics.commission_cost
+        total_cost = economics.total_cost
+        unit_profit = economics.unit_profit
+        margin_pct = economics.margin_pct
+        roi_pct = economics.roi_pct
+        if roi_pct is None:
             missing.append("roi_denominator")
-        total_cost = _round(total_cost)
-        unit_profit = _round(unit_profit)
 
     components = {
         "growth": _round(_clamp(Decimal(50) + growth)) if growth is not None else None,

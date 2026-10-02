@@ -10,6 +10,7 @@ import { ForecastReport } from '../models/analysis-forecast.model';
 import { OpportunityScoreReport, ScorePreviewRequest } from '../models/opportunity-score.model';
 import { DashboardData, DashboardPeriod } from '../models/dashboard.model';
 import { AuthService } from './auth.service';
+import { SavedFinancialScenario, SaveFinancialScenarioRequest } from '../models/saved-financial-scenario.model';
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -58,6 +59,16 @@ export class AnalysisApiService {
 
   previewOpportunityScore(id: string, payload: ScorePreviewRequest): Observable<OpportunityScoreReport> {
     return this.http.post<OpportunityScoreReport>(`${this.baseUrl}/${encodeURIComponent(id)}/opportunity-score/preview`, payload, { headers: this.headers() });
+  }
+
+  financialScenario(id: string): Observable<SavedFinancialScenario | null> {
+    return this.http.get<SavedFinancialScenario | null>(`${this.baseUrl}/${encodeURIComponent(id)}/financial-scenario`);
+  }
+
+  saveFinancialScenario(id: string, payload: SaveFinancialScenarioRequest): Observable<SavedFinancialScenario> {
+    return this.http.put<SavedFinancialScenario>(
+      `${this.baseUrl}/${encodeURIComponent(id)}/financial-scenario`, payload, { headers: this.headers() },
+    );
   }
 
   refreshDataset(id: string): Observable<AnalyticalDataset> {

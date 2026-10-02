@@ -13,6 +13,7 @@ from app.modules.analyses.features import FeatureReportRead, read_features
 from app.modules.analyses.clusters import ClusterReportRead, read_clusters
 from app.modules.analyses.forecast import ForecastReportRead, read_forecast
 from app.modules.analyses.scoring import ScorePreviewRequest, ScoreReportRead, read_score
+from app.modules.analyses.financial import FinancialScenarioRead, FinancialScenarioWrite, read_financial_scenario, save_financial_scenario
 from app.modules.analyses.trends import TrendsRead, read_trends, replace_trends
 from app.modules.analyses.schemas import AnalysisCreate, AnalysisList, AnalysisRead
 from app.modules.analyses.service import create_analysis, get_analysis, list_analyses
@@ -21,6 +22,31 @@ from app.modules.trends.domain import TrendsInputError, TrendsProvider
 
 
 router = APIRouter(prefix="/api/v1/analyses", tags=["analyses"])
+
+
+@router.get("/{analysis_id}/financial-scenario", response_model=FinancialScenarioRead | None)
+def get_financial_scenario(
+    analysis_id: UUID,
+    user_id: UUID = Depends(current_user_id),
+    session: Session = Depends(get_session),
+) -> FinancialScenarioRead | None:
+    analysis = get_analysis(session, user_id, analysis_id)
+    if analysis is None:
+        raise HTTPException(status_code=404, detail="Análisis no encontrado.")
+    return read_financial_scenario(session, analysis)
+
+
+@router.put("/{analysis_id}/financial-scenario", response_model=FinancialScenarioRead)
+def put_financial_scenario(
+    analysis_id: UUID,
+    payload: FinancialScenarioWrite,
+    user_id: UUID = Depends(current_user_id),
+    session: Session = Depends(get_session),
+) -> FinancialScenarioRead:
+    analysis = get_analysis(session, user_id, analysis_id)
+    if analysis is None:
+        raise HTTPException(status_code=404, detail="Análisis no encontrado.")
+    return save_financial_scenario(session, analysis, payload)
 
 
 @router.post("", response_model=AnalysisRead, status_code=status.HTTP_201_CREATED)

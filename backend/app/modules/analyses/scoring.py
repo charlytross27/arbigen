@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy.orm import Session
 
-from app.database.models import Analysis
+from app.database.models import Analysis, FinancialScenario
 from app.modules.analyses.dataset import analytical_products, read_dataset
 from app.modules.etl.domain import AnalyticalTrendPoint
 from app.modules.features.engineering import calculate_features
@@ -73,7 +73,10 @@ def read_score(session: Session, analysis: Analysis, payload: ScorePreviewReques
         source_count=dataset.quality.source_count if dataset.quality else None,
     )
     forecast = forecast_trends(trends)
-    financial = FinancialAssumptions(**payload.financial.model_dump()) if payload else None
+    saved = session.get(FinancialScenario, analysis.id) if payload is None else None
+    financial = (FinancialAssumptions(**payload.financial.model_dump()) if payload else
+                 FinancialAssumptions(saved.sale_price, saved.product_cost, saved.shipping_cost,
+                                      saved.commission_pct, saved.other_costs) if saved else None)
     weights = ScoreWeights(**payload.weights.model_dump()) if payload else None
     return ScoreReportRead.model_validate(asdict(calculate_score(
         features=features, forecast=forecast, assumptions=financial, weights=weights,

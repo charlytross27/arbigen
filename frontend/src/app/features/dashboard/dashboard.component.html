@@ -34,7 +34,7 @@
       @if (featured(); as item) {
         <h2 id="focus-title">{{ item.query }}</h2><p>{{ countryLabel(item.country) }} · guardada el {{ formatDate(item.created_at) }}</p>
         <dl><div><dt>Productos con precio</dt><dd>{{ item.prepared_at ? item.product_count : 'Pendiente' }}</dd></div><div><dt>Puntos de Trends</dt><dd>{{ item.trend_point_count || 'Pendiente' }}</dd></div></dl>
-        <p class="focus-note">El ROI y el score requieren tus costos y precio de venta. Puedes introducirlos en la ficha; los supuestos no se guardan.</p>
+        <p class="focus-note">El ROI y el score requieren tus costos y precio de venta. Puedes evaluar y guardar un escenario desde la investigación.</p>
         <a [routerLink]="['/analysis', item.id]" class="focus-link">Abrir investigación<app-icon name="arrow" /></a>
       } @else { <h2 id="focus-title">Empieza por un producto</h2><p>El explorador guarda tu investigación y permite añadir productos y Trends cuando estén disponibles.</p><a routerLink="/explore" class="focus-link">Nueva investigación<app-icon name="arrow" /></a> }
     </aside>

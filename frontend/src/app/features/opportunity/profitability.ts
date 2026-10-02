@@ -15,20 +15,32 @@ export function calculateProfitability(input: FinancialInputs): ProfitabilityRes
   const values = [input.productCost, input.shippingCost, input.commissionPercent, input.otherCosts, input.salePrice];
   if (values.some(value => !Number.isFinite(value) || value < 0) || input.commissionPercent > 100) return null;
 
-  const commissionRate = input.commissionPercent / 100;
-  const fixedCost = input.productCost + input.shippingCost + input.otherCosts;
-  const commissionCost = input.salePrice * commissionRate;
-  const totalCost = fixedCost + commissionCost;
-  const profit = input.salePrice - totalCost;
-  const rawBreakEven = commissionRate < 1 ? fixedCost / (1 - commissionRate) : fixedCost === 0 ? 0 : null;
+  const cents = (value: number) => Math.round((value + Number.EPSILON) * 100);
+  const rateBasisPoints = Math.round((input.commissionPercent + Number.EPSILON) * 100);
+  const fixedCents = cents(input.productCost) + cents(input.shippingCost) + cents(input.otherCosts);
+  const saleCents = cents(input.salePrice);
+  const commissionAt = (priceCents: number) => Math.round(priceCents * rateBasisPoints / 10000);
+  const commissionCents = commissionAt(saleCents);
+  const totalCents = fixedCents + commissionCents;
+  const profitCents = saleCents - totalCents;
+  const commissionCost = commissionCents / 100;
+  const totalCost = totalCents / 100;
+  const profit = profitCents / 100;
+  let breakEvenCents: number | null = null;
+  if (rateBasisPoints < 10000) {
+    breakEvenCents = fixedCents === 0 ? 0 : Math.ceil(fixedCents * 10000 / (10000 - rateBasisPoints) - 1e-9);
+    while (breakEvenCents > 0 && breakEvenCents - 1 >= fixedCents + commissionAt(breakEvenCents - 1)) breakEvenCents--;
+    while (breakEvenCents < fixedCents + commissionAt(breakEvenCents)) breakEvenCents++;
+  } else if (fixedCents === 0) {
+    breakEvenCents = 0;
+  }
 
   return {
     commissionCost,
     totalCost,
     profit,
-    marginPercent: input.salePrice > 0 ? (profit / input.salePrice) * 100 : null,
+    marginPercent: saleCents > 0 ? (profitCents / saleCents) * 100 : null,
     roiPercent: totalCost > 0 ? (profit / totalCost) * 100 : null,
-    // El precio mostrado en centavos nunca queda por debajo del equilibrio exacto.
-    breakEvenPrice: rawBreakEven === null ? null : rawBreakEven === 0 ? 0 : Math.ceil(rawBreakEven * 100 - 1e-9) / 100,
+    breakEvenPrice: breakEvenCents === null ? null : breakEvenCents / 100,
   };
 }

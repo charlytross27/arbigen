@@ -24,7 +24,7 @@ test('muestra pérdidas cuando el precio no cubre costos', () => {
   assert.equal(result.profit, -30);
   assert.equal(result.marginPercent, -30);
   assert.ok(result.roiPercent < 0);
-  assert.equal(result.breakEvenPrice, 133.34);
+  assert.equal(result.breakEvenPrice, 133.33);
 });
 
 test('mantiene cocientes indefinidos cuando el denominador es cero', () => {
@@ -35,6 +35,14 @@ test('mantiene cocientes indefinidos cuando el denominador es cero', () => {
     commissionCost: 0, totalCost: 0, profit: 0,
     marginPercent: null, roiPercent: null, breakEvenPrice: 0,
   });
+});
+
+test('equilibrio refleja la comisión efectivamente redondeada a centavos', () => {
+  const result = calculateProfitability({
+    productCost: 0.01, shippingCost: 0, commissionPercent: 40, otherCosts: 0, salePrice: 0.01,
+  });
+  assert.equal(result.commissionCost, 0);
+  assert.equal(result.breakEvenPrice, 0.01);
 });
 
 test('indica que una comisión del 100 % impide un equilibrio finito', () => {

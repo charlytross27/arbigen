@@ -1,0 +1,17 @@
+.product-select-label { display: block; color: #556b5a; font-size: 11px; font-weight: 600; margin: 8px 0; }
+.product-select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #dfe7df; border-radius: 6px; background: #fbfcfa; color: #294633; font: inherit; font-size: 12px; }
+.product-select:focus-visible { outline: 2px solid #80aa83; outline-offset: 2px; }
+.selected-product { margin-top: 17px; padding: 15px; border-radius: 7px; background: #f0f5ea; border: 1px solid #e0eadb; }
+.selected-product strong { display: block; color: #334d3b; font-size: 13px; line-height: 1.4; }
+.selected-product p { margin: 8px 0; font-size: 12px; color: #315c43; }
+.selected-product small { display: block; color: #778878; font-size: 11px; line-height: 1.5; }
+.saved-note h2 { font-size: 18px; margin-bottom: 8px; }
+.saved-note p { font-size: 11px; line-height: 1.6; color: #778878; margin-bottom: 12px; }
+.saved-note dl { display: grid; gap: 8px; margin-top: 15px; }
+.saved-note dl div { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.saved-note dt { color: #829386; }.saved-note dd { color: #315c43; font-weight: 600; text-align: right; }
+.save-button { width: 100%; justify-content: center; margin-top: 18px; }
+.save-feedback { padding: 11px 12px; margin-top: 14px; border-radius: 6px; font-size: 11px; }
+.save-feedback.error { color: #9e4c3f; background: #fff4f0; }
+.save-feedback.success { color: #3b7250; background: #edf6ed; }
+.loading-state { padding: 30px; color: #617762; }
