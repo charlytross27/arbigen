@@ -10,7 +10,7 @@ export const CATALOG_FIXTURES: readonly CatalogCampaign[] = [
       { id: 'rings-natural', label: 'Piedra clara', url: '/demo-catalogs/ring-natural.svg', format: 'SVG', favorite: true, local: false },
       { id: 'rings-premium', label: 'Fondo editorial', url: '/demo-catalogs/ring-premium.svg', format: 'SVG', favorite: false, local: false },
     ],
-    opportunityId: 'demo-rings', createdAt: '2026-09-26T12:00:00.000Z', origin: 'example',
+    createdAt: '2026-09-26T12:00:00.000Z', origin: 'example',
   },
   {
     id: 'demo-catalog-lamps', name: 'Luz para habitar', productName: 'Lámparas de mesa nórdicas',
@@ -20,6 +20,6 @@ export const CATALOG_FIXTURES: readonly CatalogCampaign[] = [
       { id: 'lamps-natural', label: 'Sala cálida', url: '/demo-catalogs/lamp-natural.svg', format: 'SVG', favorite: true, local: false },
       { id: 'lamps-studio', label: 'Estudio suave', url: '/demo-catalogs/lamp-studio.svg', format: 'SVG', favorite: false, local: false },
     ],
-    opportunityId: 'demo-lamps', createdAt: '2026-09-23T12:00:00.000Z', origin: 'example',
+    createdAt: '2026-09-23T12:00:00.000Z', origin: 'example',
   },
 ];

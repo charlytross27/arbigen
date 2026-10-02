@@ -22,7 +22,7 @@ export class CatalogDemoService {
   readonly campaigns = computed(() => this.items().filter(item => !this.hiddenIds().has(item.id)));
   readonly recentlyDeleted = signal<CatalogCampaign | null>(null);
 
-  saveFromStudio(configuration: CampaignConfiguration, file: File, previews: readonly StudioAssetInput[], opportunityId: string | null): CatalogCampaign {
+  saveFromStudio(configuration: CampaignConfiguration, file: File, previews: readonly StudioAssetInput[]): CatalogCampaign {
     const selected = previews.filter(preview => preview.selected);
     const included = selected.length ? selected : previews;
     if (!included.length) throw new Error('No hay vistas previas para el catálogo.');
@@ -37,7 +37,7 @@ export class CatalogDemoService {
         url: URL.createObjectURL(preview.blob), format: 'PNG' as const,
         favorite: preview.selected, local: true,
       })),
-      opportunityId, createdAt: new Date().toISOString(), origin: 'session',
+      createdAt: new Date().toISOString(), origin: 'session',
     };
     this.items.update(items => [campaign, ...items]);
     return campaign;

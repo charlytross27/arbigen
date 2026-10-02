@@ -18,7 +18,6 @@ export interface CatalogCampaign {
   readonly originalName: string;
   readonly originalFormat: 'PNG' | 'JPEG' | 'WebP' | 'SVG';
   readonly assets: readonly CatalogAsset[];
-  readonly opportunityId: string | null;
   readonly createdAt: string;
   readonly origin: 'example' | 'session';
 }

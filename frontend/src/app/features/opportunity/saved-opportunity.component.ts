@@ -29,7 +29,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
   selector: 'app-saved-opportunity', standalone: true,
   imports: [DecimalPipe, RouterLink, IconComponent],
   templateUrl: './saved-opportunity.component.html',
-  styleUrls: ['./opportunity.component.scss', './saved-opportunity.component.scss'],
+  styleUrls: ['./opportunity-layout.scss', './saved-opportunity.component.scss'],
 })
 export class SavedOpportunityComponent {
   private readonly route = inject(ActivatedRoute);

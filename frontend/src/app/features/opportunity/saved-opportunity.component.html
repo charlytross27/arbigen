@@ -1,6 +1,6 @@
 <div class="opportunity-page saved-opportunity-page">
   @let view = state();
-  <div class="page-top"><a [routerLink]="view.status === 'ready' ? ['/analysis', view.analysis.id] : '/analyses'" class="text-link"><span aria-hidden="true">←</span>Volver al análisis</a><span class="demo-badge"><i></i>DATOS DE TU CUENTA</span></div>
+  <div class="page-top"><a [routerLink]="view.status === 'ready' ? ['/analysis', view.analysis.id] : '/analyses'" class="text-link"><span aria-hidden="true">←</span>Volver al análisis</a><span class="account-badge"><i></i>DATOS DE TU CUENTA</span></div>
 
   @if (view.status === 'loading') {
     <div class="loading-state" role="status">Cargando datos de la investigación…</div>

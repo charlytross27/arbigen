@@ -18,7 +18,6 @@ export const routes: Routes = [
     { path: 'analyses', title: 'Mis análisis · Arbigen', loadComponent: () => import('./features/analyses/analyses.component').then(m => m.AnalysesComponent) },
     { path: 'analysis/:id', title: 'Resultado del análisis · Arbigen', loadComponent: () => import('./features/analysis/analysis.component').then(m => m.AnalysisComponent) },
     { path: 'opportunity/saved/:id', title: 'Oportunidad guardada · Arbigen', loadComponent: () => import('./features/opportunity/saved-opportunity.component').then(m => m.SavedOpportunityComponent) },
-    { path: 'opportunity/:id', title: 'Detalle de oportunidad · Arbigen', loadComponent: () => import('./features/opportunity/opportunity.component').then(m => m.OpportunityComponent) },
     { path: 'studio', title: 'Estudio IA · Arbigen', loadComponent: () => import('./features/studio/studio.component').then(m => m.StudioComponent) },
     { path: 'catalogs', title: 'Mis catálogos · Arbigen', loadComponent: () => import('./features/catalogs/catalogs.component').then(m => m.CatalogsComponent) },
     { path: 'catalogs/:id', title: 'Detalle de catálogo · Arbigen', loadComponent: () => import('./features/catalogs/catalogs.component').then(m => m.CatalogsComponent) },

@@ -61,6 +61,6 @@ export class ShellComponent {
   private updateSection(url: string): void {
     const path = url.split('?')[0];
     const nav = this.navigation.find(item => item.route === path);
-    this.currentSection.set(nav?.label ?? (path.startsWith('/analysis/') ? 'Resultado del análisis' : path.startsWith('/opportunity/saved/') ? 'Rentabilidad' : path.startsWith('/opportunity/') ? 'Detalle de oportunidad' : path.startsWith('/catalogs/') ? 'Detalle de catálogo' : path === '/profile' ? 'Mi perfil' : 'Página no encontrada'));
+    this.currentSection.set(nav?.label ?? (path.startsWith('/analysis/') ? 'Resultado del análisis' : path.startsWith('/opportunity/saved/') ? 'Rentabilidad' : path.startsWith('/catalogs/') ? 'Detalle de catálogo' : path === '/profile' ? 'Mi perfil' : 'Página no encontrada'));
   }
 }

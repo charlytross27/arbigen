@@ -184,9 +184,7 @@ export class StudioComponent implements OnDestroy {
       previews.push({ variant, blob, selected: this.savedIds().has(variant.id) });
     }
     try {
-      const campaign = this.catalogs.saveFromStudio(
-        this.configuration(), image.file, previews, this.route.snapshot.queryParamMap.get('opportunity'),
-      );
+      const campaign = this.catalogs.saveFromStudio(this.configuration(), image.file, previews);
       void this.router.navigate(['/catalogs', campaign.id]);
     } catch {
       this.saveError.set('No pudimos crear el catálogo de demostración.');
