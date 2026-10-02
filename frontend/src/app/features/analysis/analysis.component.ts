@@ -259,7 +259,7 @@ export class AnalysisComponent {
       error: (error: HttpErrorResponse) => {
         const apiMessage = error.error?.error?.message;
         const message = error.status === 0
-          ? 'No pudimos conectar con FastAPI. Comprueba que el backend esté iniciado.'
+          ? 'No pudimos conectar con Arbigen. Comprueba tu conexión e inténtalo de nuevo.'
           : typeof apiMessage === 'string' ? apiMessage : 'No pudimos consultar Mercado Libre. Inténtalo de nuevo.';
         this.marketplace.set({ analysisId: item.id, status: 'error', message });
       },
@@ -286,7 +286,7 @@ export class AnalysisComponent {
     this.dataset.set({ analysisId: item.id, status: 'reprocessing' });
     this.api.reprocessDataset(item.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: data => { this.dataset.set({ analysisId: item.id, status: 'success', data }); this.loadFeatures(item.id); this.loadClusters(item.id); this.loadScore(item.id); },
-      error: (error: HttpErrorResponse) => this.dataset.set({ analysisId: item.id, status: 'error', message: this.errorMessage(error, 'No pudimos reprocesar el dataset.') }),
+      error: (error: HttpErrorResponse) => this.dataset.set({ analysisId: item.id, status: 'error', message: this.errorMessage(error, 'No pudimos actualizar los datos guardados.') }),
     });
   }
 
@@ -297,7 +297,7 @@ export class AnalysisComponent {
         this.dataset.set({ analysisId: id, status: 'success', data });
         if (data.snapshot) this.marketplace.set({ analysisId: id, status: 'success', data: data.snapshot });
       },
-      error: (error: HttpErrorResponse) => this.dataset.set({ analysisId: id, status: 'error', message: this.errorMessage(error, 'No pudimos cargar el dataset guardado.') }),
+      error: (error: HttpErrorResponse) => this.dataset.set({ analysisId: id, status: 'error', message: this.errorMessage(error, 'No pudimos cargar los datos guardados.') }),
     });
   }
 
@@ -365,9 +365,9 @@ export class AnalysisComponent {
   forecastModelLabel(model: ForecastReport['selected_model']): string {
     switch (model) {
       case 'naive': return 'Último valor';
-      case 'moving_average_3': return 'Media de 3 puntos';
-      case 'drift': return 'Tendencia lineal';
-      case 'seasonal_naive': return 'Patrón estacional previo';
+      case 'moving_average_3': return 'Promedio de 3 datos';
+      case 'drift': return 'Cambio reciente';
+      case 'seasonal_naive': return 'Patrón de temporadas anteriores';
       default: return '—';
     }
   }
@@ -380,7 +380,7 @@ export class AnalysisComponent {
     this.forecast.set({ analysisId: id, status: 'loading' });
     this.api.forecast(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: data => this.forecast.set({ analysisId: id, status: 'success', data }),
-      error: (error: HttpErrorResponse) => this.forecast.set({ analysisId: id, status: 'error', message: this.errorMessage(error, 'No pudimos validar la serie temporal.') }),
+      error: (error: HttpErrorResponse) => this.forecast.set({ analysisId: id, status: 'error', message: this.errorMessage(error, 'No pudimos revisar la evolución del interés.') }),
     });
   }
 
@@ -398,9 +398,9 @@ export class AnalysisComponent {
     return {
       market_sample: 'al menos 8 productos con precio válido',
       trend_growth: '6 puntos recientes y consecutivos de Trends',
-      validated_forecast: 'un pronóstico con validación suficiente',
+      validated_forecast: 'datos suficientes para comprobar la proyección',
       financial_inputs: 'precio de venta y costos del escenario',
-      roi_denominator: 'costos totales mayores que cero para calcular ROI',
+      roi_denominator: 'costos mayores que cero para comparar la ganancia',
     }[key] ?? key;
   }
 
@@ -454,7 +454,7 @@ export class AnalysisComponent {
 
   materialHints(features: AnalysisFeatures): string {
     const entries = Object.entries(features.market.material_hints);
-    return entries.length ? entries.map(([material, count]) => `${material}: ${count}`).join(' · ') : 'Sin pistas de material';
+    return entries.length ? entries.map(([material, count]) => `${material}: ${count}`).join(' · ') : 'No se mencionan materiales';
   }
 
   downloadDataset(item: SavedAnalysis): void {
@@ -506,7 +506,7 @@ export class AnalysisComponent {
   }
 
   private errorMessage(error: HttpErrorResponse, fallback: string): string {
-    if (error.status === 0) return 'No pudimos conectar con FastAPI. Comprueba que el backend esté iniciado.';
+    if (error.status === 0) return 'No pudimos conectar con Arbigen. Comprueba tu conexión e inténtalo de nuevo.';
     const message = error.error?.error?.message;
     return typeof message === 'string' ? message : fallback;
   }

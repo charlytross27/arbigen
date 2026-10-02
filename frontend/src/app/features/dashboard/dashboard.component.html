@@ -9,7 +9,7 @@
 @if (view.status === 'loading') {
   <div class="loading-state" role="status" aria-live="polite"><span class="sr-only">Cargando investigaciones guardadas…</span><div class="metrics">@for (item of [1, 2, 3, 4]; track item) { <div class="panel skeleton metric-skeleton"></div> }</div><div class="panel skeleton content-skeleton"></div></div>
 } @else if (view.status === 'error') {
-  <div class="panel state-panel" role="alert"><app-icon name="info" /><h2>No pudimos cargar tus datos</h2><p>Comprueba la conexión con FastAPI y PostgreSQL.</p><button type="button" class="button primary" (click)="retry()">Volver a intentar</button></div>
+  <div class="panel state-panel" role="alert"><app-icon name="info" /><h2>No pudimos cargar tus datos</h2><p>Comprueba tu conexión e inténtalo de nuevo.</p><button type="button" class="button primary" (click)="retry()">Volver a intentar</button></div>
 } @else {
   <div class="metrics">
     <article class="panel metric"><div class="metric-label">Investigaciones guardadas<span class="metric-icon"><app-icon name="chart" /></span></div><strong>{{ view.data.analysis_count }}</strong><p>Creadas en el periodo seleccionado</p></article>
@@ -34,13 +34,13 @@
       @if (featured(); as item) {
         <h2 id="focus-title">{{ item.query }}</h2><p>{{ countryLabel(item.country) }} · guardada el {{ formatDate(item.created_at) }}</p>
         <dl><div><dt>Productos con precio</dt><dd>{{ item.prepared_at ? item.product_count : 'Pendiente' }}</dd></div><div><dt>Puntos de Trends</dt><dd>{{ item.trend_point_count || 'Pendiente' }}</dd></div></dl>
-        <p class="focus-note">El ROI y el score requieren tus costos y precio de venta. Puedes evaluar y guardar un escenario desde la investigación.</p>
+        <p class="focus-note">Para conocer la rentabilidad necesitas tu precio de venta y tus costos. Puedes introducirlos y guardarlos desde la investigación.</p>
         <a [routerLink]="['/analysis', item.id]" class="focus-link">Abrir investigación<app-icon name="arrow" /></a>
       } @else { <h2 id="focus-title">Empieza por un producto</h2><p>El explorador guarda tu investigación y permite añadir productos y Trends cuando estén disponibles.</p><a routerLink="/explore" class="focus-link">Nueva investigación<app-icon name="arrow" /></a> }
     </aside>
   </div>
 
-  <section class="panel activity-panel" aria-labelledby="activity-title"><div class="section-heading"><div><h2 id="activity-title">Actividad reciente</h2><p>Eventos registrados en PostgreSQL durante el periodo.</p></div></div>
+  <section class="panel activity-panel" aria-labelledby="activity-title"><div class="section-heading"><div><h2 id="activity-title">Actividad reciente</h2><p>Cambios recientes en tus investigaciones.</p></div></div>
     @if (view.data.activity.length) { <div class="activity-list">@for (item of view.data.activity; track item.kind + item.analysis_id + item.occurred_at) { <a [routerLink]="['/analysis', item.analysis_id]" class="activity-item"><span class="activity-icon"><app-icon [name]="activityIcon(item.kind)" /></span><span class="activity-copy"><strong>{{ activityLabel(item.kind) }}</strong><small>{{ item.query }} · {{ countryLabel(item.country) }}</small></span><time [attr.datetime]="item.occurred_at">{{ formatDate(item.occurred_at) }}</time><app-icon class="activity-arrow" name="chevron" /></a> }</div> }
     @else { <p class="empty-activity">No se registraron cambios en este periodo.</p> }
   </section>

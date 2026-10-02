@@ -1,6 +1,6 @@
 <div class="analyses-page">
   <header class="page-heading"><div><span class="eyebrow">INTELIGENCIA DE MERCADO / TU HISTORIAL</span><h1>Mis análisis</h1><p>Recupera las investigaciones guardadas en tu cuenta.</p></div><a routerLink="/explore" class="button primary"><app-icon name="plus" />Nueva investigación</a></header>
-  <div class="data-notice"><app-icon name="info" /><p><strong>Investigaciones guardadas en PostgreSQL.</strong> Las fichas pueden preparar productos, importar una serie de Google Trends y calcular señales, segmentos y pronósticos exploratorios con los datos disponibles. Solo tu cuenta puede consultar estos registros.</p></div>
+  <div class="data-notice"><app-icon name="info" /><p><strong>Tus investigaciones están disponibles en esta cuenta.</strong> Abre una ficha para consultar productos, añadir datos de Google Trends y revisar lo que muestran. Solo tú puedes ver estas investigaciones.</p></div>
 
   @if (status() === 'loading') {
     <div class="list-stack" role="status" aria-live="polite">@for (item of [1,2,3]; track item) { <div class="panel skeleton row-skeleton"></div> }<span class="sr-only">Cargando investigaciones guardadas…</span></div>
@@ -9,7 +9,7 @@
   } @else if (!items().length) {
     <section class="panel message-state"><app-icon name="chart" /><span class="eyebrow">AÚN SIN INVESTIGACIONES</span><h2>Tu primera búsqueda empieza aquí.</h2><p>Guarda un producto y sus filtros para retomarlos después.</p><a routerLink="/explore" class="button primary">Abrir Explorador<app-icon name="arrow" /></a></section>
   } @else {
-    <div class="list-heading"><div><span class="eyebrow">HISTORIAL DE ESTE NAVEGADOR</span><h2>Investigaciones guardadas</h2></div><span>{{ total() }} {{ total() === 1 ? 'registro' : 'registros' }}</span></div>
+    <div class="list-heading"><div><span class="eyebrow">HISTORIAL DE TU CUENTA</span><h2>Investigaciones guardadas</h2></div><span>{{ total() }} {{ total() === 1 ? 'registro' : 'registros' }}</span></div>
     <div class="list-stack">@for (item of items(); track item.id) { <article class="panel analysis-row"><div class="row-icon"><app-icon name="search" /></div><div class="row-content"><span class="row-date">{{ formatDate(item.created_at) }}</span><h3><a [routerLink]="['/analysis', item.id]">{{ item.query }}</a></h3><p>{{ countryLabel(item.country) }} · {{ item.category ?? 'Todas las categorías' }} · {{ item.period_months }} meses</p></div><span class="saved-tag">GUARDADA</span><a [routerLink]="['/analysis', item.id]" class="row-action" [attr.aria-label]="'Abrir investigación ' + item.query"><app-icon name="arrow" /></a></article> }</div>
     @if (items().length < total()) { <div class="more-area"><button type="button" class="button secondary" [disabled]="loadingMore()" (click)="loadMore()">{{ loadingMore() ? 'Cargando…' : 'Mostrar más' }}</button></div> }
     @if (errorMessage()) { <p class="more-error" role="alert">{{ errorMessage() }}</p> }

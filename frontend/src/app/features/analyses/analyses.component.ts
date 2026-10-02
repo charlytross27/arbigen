@@ -52,8 +52,8 @@ export class AnalysesComponent {
       },
       error: (error: HttpErrorResponse) => {
         this.errorMessage.set(error.status === 0
-          ? 'No pudimos conectar con FastAPI. Comprueba que el backend esté iniciado.'
-          : 'No pudimos consultar PostgreSQL. Inténtalo de nuevo.');
+          ? 'No pudimos conectar con Arbigen. Comprueba tu conexión e inténtalo de nuevo.'
+          : 'No pudimos cargar tus investigaciones. Inténtalo de nuevo.');
         if (reset) this.status.set('error');
         this.loadingMore.set(false);
       },

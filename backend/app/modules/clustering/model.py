@@ -113,11 +113,11 @@ def cluster_products(*, country: str, products: Sequence[AnalyticalProduct]) -> 
     count = len(ordered)
     if count < MIN_PRODUCTS or len({product.price for product in ordered}) < MIN_DISTINCT_PRICES:
         return ClusterReport(country, currency, "insufficient_data", product_count, count, excluded_outlier_count,
-                             None, None, (), "Se necesitan al menos 8 productos con precio y 4 precios distintos para segmentar.")
+                             None, None, (), "Para formar grupos necesitamos al menos 8 productos con precio y 4 precios diferentes.")
     price_median = median(product.price for product in ordered)
     if (ordered[-1].price - ordered[0].price) / max(price_median, Decimal(1)) < MIN_RELATIVE_PRICE_SPREAD:
         return ClusterReport(country, currency, "no_separation", product_count, count, excluded_outlier_count, None, None, (),
-                             "Los precios varían menos del 15 % respecto a la mediana; la muestra no permite distinguir niveles de precio útiles.")
+                             "Los precios de esta muestra se parecen demasiado para formar grupos útiles.")
 
     vectors = _vectorize(ordered)
     best: tuple[float, int, list[int], list[tuple[float, ...]]] | None = None

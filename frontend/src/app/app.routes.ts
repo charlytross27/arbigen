@@ -22,9 +22,8 @@ export const routes: Routes = [
     { path: 'studio', title: 'Estudio IA · Arbigen', loadComponent: () => import('./features/studio/studio.component').then(m => m.StudioComponent) },
     { path: 'catalogs', title: 'Mis catálogos · Arbigen', loadComponent: () => import('./features/catalogs/catalogs.component').then(m => m.CatalogsComponent) },
     { path: 'catalogs/:id', title: 'Detalle de catálogo · Arbigen', loadComponent: () => import('./features/catalogs/catalogs.component').then(m => m.CatalogsComponent) },
-    { path: 'settings', title: 'Configuración · Arbigen', loadComponent: placeholder, data: { kind: 'settings' } },
-    { path: 'profile', title: 'Perfil · Arbigen', loadComponent: placeholder, data: { kind: 'profile' } },
-    { path: '**', title: 'Página no encontrada · Arbigen', loadComponent: placeholder, data: { kind: 'not-found' } },
+    { path: 'profile', title: 'Mi perfil · Arbigen', loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent) },
+    { path: '**', title: 'Página no encontrada · Arbigen', loadComponent: placeholder },
   ],
   },
 ];

@@ -128,8 +128,8 @@ export class ExploreComponent {
       next: saved => { this.saved.set(saved); this.status.set('success'); },
       error: (error: HttpErrorResponse) => {
         this.errorMessage.set(error.status === 0
-          ? 'No pudimos conectar con FastAPI. Comprueba que el backend esté iniciado.'
-          : 'No pudimos guardar la búsqueda. Revisa la conexión a PostgreSQL e inténtalo de nuevo.');
+          ? 'No pudimos conectar con Arbigen. Comprueba tu conexión e inténtalo de nuevo.'
+          : 'No pudimos guardar la investigación. Inténtalo de nuevo en unos momentos.');
         this.status.set('error');
       },
     });

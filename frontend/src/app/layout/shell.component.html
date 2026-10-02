@@ -10,7 +10,7 @@
       ><span>Mi espacio de trabajo<small>{{ auth.user()?.name }}</small></span
       ><span class="workspace-dot"></span>
     </div>
-    <div class="nav-label eyebrow">Workspace</div>
+    <div class="nav-label eyebrow">MENÚ</div>
     <nav #primaryNavigation aria-label="Navegación principal">
       @for (item of navigation; track item.route) {
         <a
@@ -34,12 +34,6 @@
         <span>Tu espacio privado de investigación</span>
       </div>
       <nav class="secondary-nav" aria-label="Cuenta">
-        <a
-          routerLink="/settings"
-          routerLinkActive="active"
-          ariaCurrentWhenActive="page"
-          ><app-icon name="settings" />Configuración</a
-        >
         <a
           routerLink="/profile"
           routerLinkActive="active"
@@ -76,7 +70,7 @@
         ><a
           class="avatar small"
           routerLink="/profile"
-          aria-label="Ver estado de la cuenta"
+          aria-label="Ver mi perfil"
           >{{ auth.user()?.name?.charAt(0) ?? 'A' }}</a
         >
       </div>

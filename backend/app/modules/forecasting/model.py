@@ -83,11 +83,11 @@ def forecast_trends(points: Sequence[AnalyticalTrendPoint]) -> ForecastReport:
     if len(usable) < MIN_TRAIN + MIN_ORIGINS + HORIZON - 1:
         status = "censored_data" if last_censored >= 0 else "insufficient_data"
         return _rejected(status, ordered, len(usable),
-                         "Se necesitan al menos 16 puntos consecutivos observados después del último valor <1.")
+                         "Para mostrar una proyección necesitamos al menos 16 datos seguidos después del último valor inferior a 1.")
     frequency = _frequency(usable)
     if frequency is None:
         return _rejected("irregular_series", ordered, len(usable),
-                         "Las fechas recientes no tienen frecuencia diaria, semanal o mensual sin huecos.")
+                         "Hay saltos o cambios de ritmo en las fechas recientes. Necesitamos una serie diaria, semanal o mensual sin huecos.")
 
     values = [float(point.value) for point in usable if point.value is not None]
     period = {"daily": 7, "weekly": 52, "monthly": 12}[frequency]
@@ -112,7 +112,7 @@ def forecast_trends(points: Sequence[AnalyticalTrendPoint]) -> ForecastReport:
         return ForecastReport("low_skill", len(ordered), len(usable), sum(point.less_than_one for point in ordered),
                               frequency, None, None, False, _two(scores[selected]), _two(scores["naive"]), candidate_mae,
                               len(origins), HORIZON, (),
-                              "El error medio de validación supera 20 puntos del índice; no se publica un pronóstico.")
+                              "Las pruebas con datos anteriores tuvieron demasiado error para mostrar una proyección fiable.")
 
     predicted = _predict(values, selected, HORIZON, period)
     intervals = []

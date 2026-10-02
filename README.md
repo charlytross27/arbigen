@@ -7,7 +7,7 @@ Plataforma de inteligencia de mercado y creación de catálogos para e-commerce,
 - Monorepo con Angular 21 (standalone, TypeScript estricto, Router, HttpClient y SCSS) y FastAPI.
 - Sidebar, header, navegación responsive, títulos por ruta y página 404.
 - Inicio con cuatro conteos reales, investigaciones recientes y actividad registrada en PostgreSQL, aislados por la cuenta autenticada. El selector de 7/30 días filtra por fecha de creación; la actividad filtra por fecha de cada evento. Hay estados de carga, error con reintento y vacío.
-- Registro privado con código de invitación, inicio y cierre de sesión. La API autoriza cada investigación por usuario; el header demo y el UUID de `localStorage` dejaron de otorgar acceso.
+- Registro privado con código de invitación, inicio y cierre de sesión. La API autoriza cada investigación por usuario; el header demo y el UUID de `localStorage` dejaron de otorgar acceso. El perfil muestra el nombre y correo reales de la sesión.
 - Explorador con palabra clave, país, categoría opcional y periodo. Valida y guarda la investigación mediante FastAPI en PostgreSQL; muestra un error recuperable si la API no está disponible.
 - Mis análisis lista investigaciones guardadas para la cuenta autenticada y permite abrir una ficha con los parámetros registrados. Desde cada ficha se puede consultar y guardar una muestra de productos de Mercado Libre, limitada por `MAX_PRODUCTS_PER_ANALYSIS` (200 por defecto), e importar una serie de Google Trends para el mismo término y país. El ETL muestra cuántos productos conservó y por qué excluyó otros.
 - Resultado de análisis con cinco KPIs, cinco gráficos ECharts, tres segmentos de ejemplo y cluster recomendado. Hay fixtures para anillos, lámparas y vasos; una búsqueda sin fixture muestra un estado vacío con acceso al ejemplo.
@@ -173,8 +173,7 @@ Las variables de OpenAI y storage siguen reservadas y vacías. No hay secretos e
 | `/studio` | Estudio IA mock interactivo, sin generación ni persistencia real |
 | `/catalogs` | Galería mock con dos ejemplos y campañas creadas durante la sesión |
 | `/catalogs/:id` | Detalle, favoritos, descarga y acciones locales de la campaña |
-| `/settings` | Placeholder de preferencias |
-| `/profile` | Perfil demo informativo |
+| `/profile` | Nombre y correo reales de la cuenta autenticada; permite cerrar sesión |
 | Cualquier otra | Página 404 con retorno al Dashboard |
 
 ## Verificación

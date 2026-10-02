@@ -1,6 +1,6 @@
 <div class="studio-page">
   <header class="studio-heading"><div><span class="eyebrow">CREACIÓN VISUAL <span>/</span> ESTUDIO IA</span><h1>Imagina tu producto en otra escena.</h1><p>Prepara una campaña visual con tu fotografía y explora cómo se organizarán sus resultados.</p></div><span class="phase-badge"><i></i>DEMO LOCAL</span></header>
-  <div class="data-notice"><app-icon name="info" /><p><strong>Esta pantalla aún no genera imágenes con IA.</strong> Las vistas previas reutilizan tu fotografía con recorte y filtros locales; el escenario escrito puede conservarse en un catálogo demo, pero todavía no transforma el fondo. La imagen no sale del navegador.</p></div>
+  <div class="data-notice"><app-icon name="info" /><p><strong>Esta pantalla aún no genera imágenes con IA.</strong> Las vistas previas reutilizan tu fotografía con recorte y filtros locales; la descripción del escenario puede conservarse en un catálogo de prueba, pero todavía no cambia el fondo. La imagen no sale del navegador.</p></div>
 
   @let config = configuration();
   @let image = source();
@@ -40,5 +40,5 @@
       @else { <div class="empty-results">@if (image) { <div class="empty-photo"><img [src]="image.url" alt="Vista de la fotografía original antes de preparar resultados"><span>FOTO ORIGINAL</span></div> } @else { <div class="empty-art"><span class="art-card behind"></span><span class="art-card front"><app-icon name="image" /></span><span class="art-sparkle"><app-icon name="sparkles" /></span></div> }<span class="eyebrow">TU ESPACIO CREATIVO</span><h3>Las posibilidades empiezan con una foto.</h3><p>Sube tu producto, define el estilo y prepara hasta cuatro vistas previas locales para revisar el flujo del estudio.</p><div class="empty-steps"><span><b>1</b>Imagen</span><i></i><span><b>2</b>Configuración</span><i></i><span><b>3</b>Resultados</span></div></div> }
     </section>
   </div>
-  <div class="studio-footnote"><app-icon name="info" />Las campañas demo aparecen en Mis catálogos durante esta sesión. La generación con OpenAI y el almacenamiento externo siguen pendientes. <a routerLink="/catalogs">Ver Mis catálogos</a></div>
+  <div class="studio-footnote"><app-icon name="info" />Los catálogos de prueba aparecen en Mis catálogos durante esta sesión. La creación de imágenes con IA todavía no está disponible. <a routerLink="/catalogs">Ver Mis catálogos</a></div>
 </div>
