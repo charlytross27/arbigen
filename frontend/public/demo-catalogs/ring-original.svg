@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-label="Ilustración ficticia de dos anillos de plata sobre fondo claro">
-  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#f8f8f3"/><stop offset="1" stop-color="#e8ede4"/></linearGradient><linearGradient id="silver" x2="1" y2="1"><stop stop-color="#7f8b85"/><stop offset=".45" stop-color="#fff"/><stop offset="1" stop-color="#89958f"/></linearGradient><filter id="shadow"><feGaussianBlur stdDeviation="16"/></filter></defs>
-  <rect width="640" height="640" fill="url(#bg)"/><circle cx="320" cy="320" r="240" fill="none" stroke="#dce5d9" stroke-width="1"/><ellipse cx="330" cy="500" rx="178" ry="27" fill="#a6b5a6" opacity=".25" filter="url(#shadow)"/>
-  <g transform="rotate(-22 270 306)"><ellipse cx="270" cy="306" rx="95" ry="136" fill="none" stroke="#88958f" stroke-width="35"/><ellipse cx="270" cy="306" rx="95" ry="136" fill="none" stroke="url(#silver)" stroke-width="25"/><path d="M189 271c10-50 33-76 70-91" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".8"/></g>
-  <g transform="rotate(24 390 350)"><ellipse cx="390" cy="350" rx="88" ry="129" fill="none" stroke="#8b9891" stroke-width="34"/><ellipse cx="390" cy="350" rx="88" ry="129" fill="none" stroke="url(#silver)" stroke-width="24"/><path d="M319 318c8-39 27-66 60-82" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" opacity=".8"/></g>
-  <text x="38" y="598" fill="#8b9a8c" font-family="sans-serif" font-size="14" letter-spacing="3">ARBIGEN · DEMO</text>
-</svg>

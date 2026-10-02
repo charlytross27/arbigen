@@ -1,9 +1,8 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, Injectable, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import type { CampaignConfiguration, StudioVariant } from '../../core/models/campaign.model';
 import type { CatalogAsset, CatalogCampaign } from '../../core/models/catalog.model';
-import { demoTreatment } from '../studio/studio-demo.service';
-import { renderStudioPreview } from '../studio/studio-preview';
-import { CATALOG_FIXTURES } from './catalog.fixtures';
+import { StudioApiService } from '../studio/studio-api.service';
 
 interface StudioAssetInput {
   readonly variant: StudioVariant;
@@ -11,11 +10,13 @@ interface StudioAssetInput {
   readonly selected: boolean;
 }
 
-// Almacenamiento mock en memoria de la pestaña. No usa localStorage ni backend.
+// Las imágenes son reales, pero el catálogo aún vive solo en memoria de la pestaña.
 @Injectable({ providedIn: 'root' })
-export class CatalogDemoService {
-  private readonly items = signal<readonly CatalogCampaign[]>(CATALOG_FIXTURES);
+export class CatalogSessionService {
+  private readonly api = inject(StudioApiService);
+  private readonly items = signal<readonly CatalogCampaign[]>([]);
   private readonly hiddenIds = signal<ReadonlySet<string>>(new Set());
+  private readonly originalFiles = new Map<string, File>();
   private campaignCounter = 0;
   private assetCounter = 0;
 
@@ -35,10 +36,11 @@ export class CatalogDemoService {
       assets: included.map((preview, index) => ({
         id: `${id}-asset-${index + 1}`, label: preview.variant.label,
         url: URL.createObjectURL(preview.blob), format: 'PNG' as const,
-        favorite: preview.selected, local: true,
+        favorite: preview.selected,
       })),
-      createdAt: new Date().toISOString(), origin: 'session',
+      createdAt: new Date().toISOString(),
     };
+    this.originalFiles.set(id, file);
     this.items.update(items => [campaign, ...items]);
     return campaign;
   }
@@ -70,7 +72,7 @@ export class CatalogDemoService {
   async addVariation(campaignId: string): Promise<void> {
     const campaign = this.campaigns().find(item => item.id === campaignId);
     if (!campaign || campaign.assets.length >= 4) throw new Error('Este catálogo ya tiene cuatro vistas.');
-    const asset = await this.createLocalAsset(campaign);
+    const asset = await this.createGeneratedAsset(campaign);
     if (!this.campaigns().some(item => item.id === campaignId)) {
       URL.revokeObjectURL(asset.url);
       return;
@@ -84,7 +86,7 @@ export class CatalogDemoService {
     const campaign = this.campaigns().find(item => item.id === campaignId);
     const previous = campaign?.assets.find(asset => asset.id === assetId);
     if (!campaign || !previous) throw new Error('La vista previa no está disponible.');
-    const replacement = await this.createLocalAsset(campaign);
+    const replacement = await this.createGeneratedAsset(campaign);
     if (!this.campaigns().some(item => item.id === campaignId)) {
       URL.revokeObjectURL(replacement.url);
       return;
@@ -94,17 +96,21 @@ export class CatalogDemoService {
         ? { ...replacement, id: assetId, favorite: asset.favorite }
         : asset) }
       : item));
-    if (previous.local) URL.revokeObjectURL(previous.url);
+    URL.revokeObjectURL(previous.url);
   }
 
-  private async createLocalAsset(campaign: CatalogCampaign): Promise<CatalogAsset> {
+  private async createGeneratedAsset(campaign: CatalogCampaign): Promise<CatalogAsset> {
+    const file = this.originalFiles.get(campaign.id);
+    if (!file) throw new Error('La fotografía original ya no está disponible.');
     const sequence = ++this.assetCounter;
-    const treatment = demoTreatment(campaign.configuration, sequence + campaign.assets.length);
-    const variant: StudioVariant = { id: `catalog-${sequence}`, ...treatment };
-    const blob = await renderStudioPreview(campaign.originalUrl, variant, campaign.configuration.aspectRatio);
+    const result = await firstValueFrom(this.api.generate(file, { ...campaign.configuration, variations: 1 }));
+    const image = result.images[0];
+    if (!image) throw new Error('No se recibió una imagen.');
+    const blob = await fetch(`data:${image.mime_type};base64,${image.image_base64}`).then(response => response.blob());
+    if (blob.type !== 'image/png' || !blob.size) throw new Error('La imagen recibida no es válida.');
     return {
-      id: `${campaign.id}-local-${sequence}`, label: treatment.label,
-      url: URL.createObjectURL(blob), format: 'PNG', favorite: false, local: true,
+      id: `${campaign.id}-generated-${sequence}`, label: `Escena ${sequence + campaign.assets.length}`,
+      url: URL.createObjectURL(blob), format: 'PNG', favorite: false,
     };
   }
 }

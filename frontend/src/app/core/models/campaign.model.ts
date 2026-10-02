@@ -15,5 +15,4 @@ export interface CampaignConfiguration {
 export interface StudioVariant {
   readonly id: string;
   readonly label: string;
-  readonly filter: string;
 }

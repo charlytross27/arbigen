@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-label="Ilustración ficticia de lámpara en estudio verde">
-  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#dce9dd"/><stop offset="1" stop-color="#a9c0ac"/></linearGradient><linearGradient id="shade" x2="0" y2="1"><stop stop-color="#fffef2"/><stop offset="1" stop-color="#d6dccb"/></linearGradient><filter id="shadow"><feGaussianBlur stdDeviation="22"/></filter></defs>
-  <rect width="640" height="640" fill="url(#bg)"/><circle cx="485" cy="170" r="214" fill="#fff" opacity=".22"/><path d="M0 500q300-67 640 4v136H0Z" fill="#b9cbb9"/><ellipse cx="320" cy="531" rx="188" ry="26" fill="#526d5e" opacity=".25" filter="url(#shadow)"/>
-  <path d="M238 151h164l57 202H181Z" fill="url(#shade)" stroke="#829a86" stroke-width="5"/><path d="M246 163h148l43 176H203Z" fill="#fff" opacity=".3"/><ellipse cx="320" cy="353" rx="139" ry="16" fill="#d3dccc"/><path d="M320 355v153" stroke="#546e5d" stroke-width="21"/><path d="M266 514h108" stroke="#546e5d" stroke-width="23" stroke-linecap="round"/><path d="M111 139v21m-10-10h20" stroke="#f2f7ef" stroke-width="3"/>
-  <text x="38" y="598" fill="#eaf1e7" font-family="sans-serif" font-size="14" letter-spacing="3">ARBIGEN · DEMO</text>
-</svg>

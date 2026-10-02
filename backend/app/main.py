@@ -7,6 +7,7 @@ from app.modules.analyses.router import router as analyses_router
 from app.modules.health.router import router as health_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.auth.router import router as auth_router
+from app.modules.studio.router import router as studio_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -33,6 +34,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(auth_router)
     application.include_router(analyses_router)
     application.include_router(dashboard_router)
+    application.include_router(studio_router)
     return application
 
 

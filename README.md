@@ -1,6 +1,6 @@
 # Arbigen · Trend2Catalog AI
 
-Plataforma de inteligencia de mercado y creación de catálogos para e-commerce, construida por slices. **Alcance actual en Development: fases 0–21. Inicio y resultados usan investigaciones, productos depurados y series de Trends guardados en PostgreSQL; el pipeline conserva la búsqueda bajo demanda, ETL, segmentación, pronóstico y score exploratorio. Hay una versión anterior desplegada en Vercel con PostgreSQL alojado en Neon; los cambios recientes siguen solo en Development.**
+Plataforma de inteligencia de mercado y creación de catálogos para e-commerce, construida por slices. **Alcance actual en Development: Inicio y resultados usan investigaciones, productos depurados y series de Trends guardados en PostgreSQL; Estudio IA genera imágenes con OpenAI. Hay una versión anterior desplegada en Vercel con PostgreSQL alojado en Neon; los cambios recientes siguen solo en Development.**
 
 ## Implementado
 
@@ -11,8 +11,8 @@ Plataforma de inteligencia de mercado y creación de catálogos para e-commerce,
 - Explorador con palabra clave, país, categoría opcional y periodo. Valida y guarda la investigación mediante FastAPI en PostgreSQL; muestra un error recuperable si la API no está disponible.
 - Mis análisis lista investigaciones guardadas para la cuenta autenticada y permite abrir una ficha con los parámetros registrados. Desde cada ficha se puede consultar y guardar una muestra de productos de Mercado Libre, limitada por `MAX_PRODUCTS_PER_ANALYSIS` (200 por defecto), e importar una serie de Google Trends para el mismo término y país. El ETL muestra cuántos productos conservó y por qué excluyó otros.
 - Resultado de análisis para investigaciones guardadas, con resumen de productos, interés y precios, gráfico de distribución de la muestra, evolución de Trends, pronóstico condicionado por evidencia y grupos calculados. Un ID inexistente muestra un estado de investigación no encontrada.
-- Estudio IA mock con fotografía local, configuración de campaña, espera cancelable, 1–4 vistas previas, regeneración, selección y descarga PNG. Las vistas son recortes y filtros de la imagen original; el escenario todavía no se aplica.
-- Mis catálogos con dos campañas de ejemplo ilustradas, búsqueda, filtros, detalle, favoritos, descarga, generación de una vista local, regeneración y eliminación reversible. Desde Estudio IA se puede crear un catálogo con las vistas seleccionadas o, si no hay selección, con todas.
+- Estudio IA genera 1–4 imágenes reales a partir de una fotografía de referencia mediante OpenAI. Permite elegir estilo, escena, iluminación y formato; revisar, seleccionar y descargar los PNG.
+- Mis catálogos muestra solo las campañas creadas en la sesión, sin campañas ficticias. Permite buscar, abrir, marcar favoritos, descargar, solicitar nuevas variaciones con OpenAI y eliminar con opción de deshacer. El catálogo incluye las vistas seleccionadas en Estudio IA o todas si no se seleccionó ninguna.
 - `GET /api/health`, configuración por entorno, errores JSON centralizados y pruebas de API.
 - SQLAlchemy y Alembic con ocho entidades iniciales y migración PostgreSQL. La entrada `backend/index.py` permite que Vercel detecte FastAPI al usar `backend/` como raíz del proyecto.
 - `POST /api/v1/analyses`, `GET /api/v1/analyses` paginado y `GET /api/v1/analyses/{id}` con validación, autorización por usuario autenticado y respuestas sin métricas inventadas.
@@ -28,13 +28,15 @@ Plataforma de inteligencia de mercado y creación de catálogos para e-commerce,
 
 **Inicio y la ruta de análisis muestran datos de la cuenta, sin métricas ficticias.** Los parámetros que se envían desde el Explorador se guardan en PostgreSQL. La ficha puede consultar datos actuales de Mercado Libre si el proveedor configurado admite el país. Una publicación puede incluir precio y enlace; un producto de catálogo no incluye ninguno de los dos y se identifica como tal. La muestra y el dataset depurado no son volumen de ventas ni una medida de demanda, competencia o tamaño de mercado. La categoría y el periodo guardados aún no filtran esa consulta. La serie importada de Google Trends es un índice relativo de interés, no ventas ni búsquedas absolutas; el periodo elegido tampoco se verifica automáticamente contra el CSV. La ruta de rentabilidad usa un producto de la muestra real y conserva los costos y el precio de venta que introduce el usuario. La ficha de análisis usa el escenario guardado para la puntuación y mantiene un formulario de vista previa temporal para probar otros pesos o costos. El pronóstico y los grupos de una investigación guardada se calculan con los datos disponibles.
 
-El Estudio IA y Mis catálogos funcionan completamente en el navegador. No envían fotografías a FastAPI ni a terceros, ni generan imágenes con IA. «Guardar» selecciona vistas para crear un catálogo demo. Las campañas y cambios viven solo en memoria de la pestaña y desaparecen al recargar. Las dos campañas iniciales usan ilustraciones SVG ficticias. Las campañas nuevas y las vistas regeneradas son recortes y filtros locales de la imagen original; la descarga exporta el archivo mostrado.
+El Estudio IA envía la fotografía al backend autenticado, que llama a la API de imágenes de OpenAI con la clave guardada solo en `backend/.env`. Cada pulsación de generar, regenerar o añadir variación puede generar un cargo; las pruebas automatizadas usan respuestas simuladas y no consumen la API. Las imágenes se devuelven al navegador como PNG. Los catálogos, favoritos y cambios aún viven solo en la memoria de la pestaña y desaparecen al recargar; descarga lo que quieras conservar. No se ejecuta Apify en este flujo.
+
+En Development, configura `OPENAI_API_KEY` en `backend/.env` e inicia backend y frontend como de costumbre. Si tu proyecto de OpenAI no tiene acceso al modelo predeterminado, establece `OPENAI_IMAGE_MODEL` con un modelo de edición disponible para tu cuenta. [OpenAI documenta el endpoint de edición y sus parámetros](https://developers.openai.com/api/reference/cli/resources/images/methods/edit); algunos modelos pueden requerir verificar la organización. La primera generación con una foto real queda como comprobación manual porque consume la API.
 
 ## Requisitos
 
 - Node.js 22.12+ de la rama 22 (verificado con 22.13.0), npm 11.
 - Python 3.11+ con `venv` y `pip`.
-- Estudio IA, catálogos de prueba y `/api/health` funcionan sin base de datos. Inicio, Explorador, Mis análisis, resultados y rentabilidad guardada requieren FastAPI y PostgreSQL.
+- Estudio IA requiere iniciar sesión, FastAPI y `OPENAI_API_KEY`; la sesión privada usa PostgreSQL. Mis catálogos conserva las imágenes generadas solo hasta recargar. `/api/health` funciona sin base de datos.
 
 Se eligió Angular 21 por su compatibilidad con el Node instalado. La [matriz oficial de Angular](https://angular.dev/reference/versions) documenta las versiones admitidas.
 
@@ -154,8 +156,11 @@ Para un ensayo integral en una base local dedicada, configura `ARBIGEN_TEST_DATA
 | `APIFY_ACTOR_ID` | `karamelo/mercadolibre-scraper-espanol-castellano` | Actor seleccionado; su contrato se traduce en el adaptador |
 | `APIFY_MAX_PAGES` | `4` | Máximo de páginas que procesa el actor (1–50) |
 | `APIFY_REQUEST_TIMEOUT_SECONDS` | `120` | Timeout de la ejecución síncrona (10–290 s) |
+| `OPENAI_API_KEY` | vacío | Clave privada para la generación de imágenes de Estudio IA |
+| `OPENAI_IMAGE_MODEL` | `gpt-image-2.5-sunburst` si está vacío | Modelo de edición de imágenes compatible con la API |
+| `OPENAI_IMAGE_TIMEOUT_SECONDS` | `180` | Tiempo máximo de espera de la respuesta de imágenes (30–290 s) |
 
-Las variables de OpenAI y storage siguen reservadas y vacías. No hay secretos en Angular. Angular CLI no carga `.env` automáticamente: `environment.ts` contiene solo la ruta pública `/api` y `environment.development.ts` la sustituye mediante `fileReplacements`. En desarrollo el proxy de Angular dirige `/api/**` al backend local; en Vercel, `frontend/vercel.json` reescribe `/api` al backend público. El backend no abre una conexión a PostgreSQL para responder `/api/health`.
+`OPENAI_API_KEY` se lee solo en FastAPI; `OPENAI_IMAGE_MODEL` vacío usa `gpt-image-2.5-sunburst`. El almacenamiento externo sigue pendiente. No hay secretos en Angular. Angular CLI no carga `.env` automáticamente: `environment.ts` contiene solo la ruta pública `/api` y `environment.development.ts` la sustituye mediante `fileReplacements`. En desarrollo el proxy de Angular dirige `/api/**` al backend local; en Vercel, `frontend/vercel.json` reescribe `/api` al backend público. El backend no abre una conexión a PostgreSQL para responder `/api/health`.
 
 ## Rutas
 
@@ -167,9 +172,9 @@ Las variables de OpenAI y storage siguen reservadas y vacías. No hay secretos e
 | `/analyses` | Historial real de búsquedas de la cuenta |
 | `/analysis/:id` | Resultados de una investigación guardada si el ID es UUID; usa datos persistidos y consulta Mercado Libre solo bajo acción explícita |
 | `/opportunity/saved/:id` | Producto observado y escenario financiero persistido para una investigación de tu cuenta |
-| `/studio` | Estudio IA mock interactivo, sin generación ni persistencia real |
-| `/catalogs` | Galería mock con dos ejemplos y campañas creadas durante la sesión |
-| `/catalogs/:id` | Detalle, favoritos, descarga y acciones locales de la campaña |
+| `/studio` | Generación real de imágenes con OpenAI; resultados temporales hasta descargar o crear catálogo |
+| `/catalogs` | Galería de campañas reales creadas durante la sesión; sin persistencia al recargar |
+| `/catalogs/:id` | Detalle, favoritos, descarga y generación adicional con OpenAI |
 | `/profile` | Nombre y correo reales de la cuenta autenticada; permite cerrar sesión |
 | Cualquier otra | Página 404 con retorno al Dashboard |
 
@@ -184,7 +189,7 @@ python -m pytest -q
 python -m pip check
 ```
 
-Las pruebas verifican salud, error 404, CORS, validación del contrato, modelo inicial, configuración de PostgreSQL, ambos adaptadores de productos con respuestas HTTP simuladas, el parser CSV de Trends, ETL, variables descriptivas, clustering, forecasting con backtesting y score exploratorio. Con `ARBIGEN_TEST_DATABASE_URL` apuntando a una **base de pruebas migrada y separada** también verifican escritura/lectura, aislamiento entre cuentas autenticadas, importación de Trends, preparación del dataset, lectura analítica, escenarios financieros privados y agregados de Inicio con rollback. Las pruebas del proveedor no ejecutan el actor de Apify.
+Las pruebas verifican salud, error 404, CORS, validación del contrato, modelo inicial, configuración de PostgreSQL, ambos adaptadores de productos con respuestas HTTP simuladas, edición de imágenes con respuesta OpenAI simulada, el parser CSV de Trends, ETL, variables descriptivas, clustering, forecasting con backtesting y score exploratorio. Con `ARBIGEN_TEST_DATABASE_URL` apuntando a una **base de pruebas migrada y separada** también verifican escritura/lectura, aislamiento entre cuentas autenticadas, importación de Trends, preparación del dataset, lectura analítica, escenarios financieros privados y agregados de Inicio con rollback. Las pruebas del proveedor no ejecutan el actor de Apify ni crean imágenes de pago.
 
 Frontend:
 
@@ -211,16 +216,16 @@ Prueba manual sugerida:
 7. Desde una investigación con productos, abrir «Evaluar rentabilidad»: seleccionar una publicación y confirmar que su precio observado no rellena automáticamente el costo del proveedor. Introducir precio de venta y costos propios, guardar y recargar: deben conservarse el producto, los importes y la utilidad. Descargar el JSON, configurar `ARBIGEN_SCENARIO_PATH` y ejecutar el cuaderno. Cambiar la muestra mediante reprocesamiento no debe borrar la hipótesis guardada; la vista previa de score no debe sobrescribirla. Esta ruta no llama a Apify.
 8. Abrir una investigación con productos guardados: el resumen y el gráfico de precios deben reflejar la misma muestra. Recargar no debe iniciar otra búsqueda ni cambiar los conteos. `/analysis/demo-rings` debe indicar que no existe una investigación con ese ID.
 9. Detener FastAPI y repetir el guardado: debe aparecer un error de conexión. Reiniciar FastAPI y pulsar «Reintentar». «Nueva búsqueda» restaura los campos iniciales.
-10. Abrir un catálogo ilustrativo: no debe ofrecer un enlace a una oportunidad ficticia. «Nueva campaña» debe llevar el nombre del producto al Estudio.
+10. Abrir un catálogo creado en la sesión: no debe ofrecer un enlace a una oportunidad ficticia. «Nueva campaña» debe llevar el nombre del producto al Estudio.
 11. Abrir `/opportunity/demo-rings`: debe mostrar la página 404. Desde una investigación guardada, «Evaluar rentabilidad» debe seguir abriendo su simulador real.
 12. En el simulador de una investigación guardada, probar venta por debajo de costos, campo vacío, costo negativo y comisión mayor a 100 %. La pantalla debe mostrar pérdida o errores según corresponda. Con comisión 100 % y costos fijos positivos, el equilibrio no existe. «Borrar valores» limpia los campos sin alterar el escenario guardado.
 13. Abrir `/opportunity/saved/no-existe`: debe aparecer «Investigación no encontrada». La antigua `/opportunity/no-existe` debe mostrar 404.
 14. Desde un catálogo abrir «Nueva campaña» y comprobar que aparece el nombre del producto en el Estudio. Subir un PNG, JPEG o WebP menor de 10 MB; el original debe verse a la izquierda sin modificaciones.
-15. Cambiar estilo, escenario, iluminación, formato y número de variaciones. Pulsar «Preparar vistas previas»: aparece carga simulada y luego 1–4 recortes filtrados del original. Probar «Regenerar demo», «Guardar» y «Descargar PNG».
-16. Durante la carga usar «Cancelar». Cambiar una opción o la fotografía después de generar: los resultados anteriores deben desaparecer. Probar un archivo inválido o mayor de 10 MB; debe mostrarse el error.
-17. En Estudio IA, marcar una vista y pulsar «Crear catálogo demo»: el detalle debe contener solo esa vista y la fotografía original. Volver a Mis catálogos y comprobar la campaña nueva en el filtro «Esta sesión». Repetir sin marcar vistas: deben entrar todas.
-18. En `/catalogs`, buscar un producto y comprobar el estado vacío con un término desconocido. Abrir una campaña de ejemplo, cambiar un favorito, descargar una vista, generar una nueva variación y regenerar otra. El límite es cuatro vistas por catálogo.
-19. Eliminar un catálogo y usar «Deshacer». Recargar: deben restablecerse las campañas de ejemplo y desaparecer los cambios y las campañas creadas durante la sesión.
+15. Con una clave de OpenAI válida y aceptando el posible cargo, cambiar estilo, escenario, iluminación, formato y número de variaciones. Pulsar «Generar imágenes»: aparecen 1–4 imágenes nuevas basadas en la foto. Probar selección y «Descargar PNG». No repetir generaciones solo para verificar la interfaz.
+16. Durante la carga mantener la pantalla abierta. Cambiar una opción o la fotografía después de generar: los resultados anteriores deben desaparecer. Probar un archivo inválido o mayor de 10 MB; debe mostrarse el error sin llamar a OpenAI.
+17. En Estudio IA, marcar una vista y pulsar «Crear catálogo»: el detalle debe contener solo esa vista generada y la fotografía original. Repetir sin marcar vistas: deben entrar todas. Descargar antes de recargar porque la galería es temporal.
+18. En `/catalogs`, buscar un producto y comprobar el estado vacío con un término desconocido. Abrir una campaña creada, cambiar un favorito y descargar una vista. Añadir o regenerar una variación solo si se acepta otra solicitud de pago a OpenAI. El límite es cuatro vistas por catálogo.
+19. Eliminar un catálogo y usar «Deshacer». Recargar: deben desaparecer las campañas y cambios de la sesión.
 20. Navegar por todas las opciones del sidebar, recargar una ruta interna y probar una dirección desconocida.
 21. Reducir el ancho a móvil, abrir/cerrar el menú y desplazar horizontalmente la tabla. Los gráficos, el simulador, el Estudio y Mis catálogos deben caber sin desbordamiento.
 22. Navegar con Tab; probar «Saltar al contenido» y Escape para cerrar el menú.
@@ -230,10 +235,10 @@ El estado de carga de Inicio aparece al cambiar de periodo. Las ramas vacía y e
 
 ## Pendiente y siguiente paso
 
-La estructura PostgreSQL, las búsquedas guardadas, los contratos `MarketplaceSearchProvider` y `TrendsProvider`, el modelo `MarketplaceProduct`, los adaptadores Apify/oficial, el importador CSV, el ETL, las variables descriptivas, la segmentación, el pronóstico validado y el score exploratorio ya existen. El token oficial local funciona para `/users/me` y `/products/search`, pero `/sites/MLM/search` responde 403. Con autorización específica se ejecutó una consulta del actor de Karamelo para «juguetes de bebe» en MX, una página y `maxItems=12`: quedaron 12 productos depurados; el clustering agrupó 11 en dos segmentos e informó un precio atípico excluido solo del ajuste. La investigación local tiene ahora 273 puntos mensuales importados del CSV `Time` facilitado por el usuario (enero de 2004 a septiembre de 2026); el pronóstico validado eligió el método estacional ingenuo. El país no es verificable dentro de ese formato, como indica la ficha. Colombia y Argentina están cubiertos por pruebas HTTP simuladas, todavía no por una ejecución real del actor. El límite de 200 es un máximo, no una garantía de que el actor devuelva exactamente 200 productos. Cada pulsación de «Consultar y preparar» o «Actualizar y preparar» inicia otra ejecución del actor y puede generar cargos; reprocesar, descargar el JSON, abrir el cuaderno o calcular un escenario no inicia búsquedas. Siguen pendientes recuperación de cuenta, MFA, protección persistente contra intentos masivos, análisis de mercado más amplio, mediciones independientes de demanda y competencia, conexión de las demás pantallas con la API, generación de imágenes con IA y almacenamiento externo. Los catálogos de campañas todavía viven solo en memoria del navegador.
+La estructura PostgreSQL, las búsquedas guardadas, los contratos `MarketplaceSearchProvider` y `TrendsProvider`, el modelo `MarketplaceProduct`, los adaptadores Apify/oficial, el importador CSV, el ETL, las variables descriptivas, la segmentación, el pronóstico validado y el score exploratorio ya existen. El token oficial local funciona para `/users/me` y `/products/search`, pero `/sites/MLM/search` responde 403. Con autorización específica se ejecutó una consulta del actor de Karamelo para «juguetes de bebe» en MX, una página y `maxItems=12`: quedaron 12 productos depurados; el clustering agrupó 11 en dos segmentos e informó un precio atípico excluido solo del ajuste. La investigación local tiene ahora 273 puntos mensuales importados del CSV `Time` facilitado por el usuario (enero de 2004 a septiembre de 2026); el pronóstico validado eligió el método estacional ingenuo. El país no es verificable dentro de ese formato, como indica la ficha. Colombia y Argentina están cubiertos por pruebas HTTP simuladas, todavía no por una ejecución real del actor. El límite de 200 es un máximo, no una garantía de que el actor devuelva exactamente 200 productos. Cada pulsación de «Consultar y preparar» o «Actualizar y preparar» inicia otra ejecución del actor y puede generar cargos; reprocesar, descargar el JSON, abrir el cuaderno o calcular un escenario no inicia búsquedas. Siguen pendientes recuperación de cuenta, MFA, protección persistente contra intentos masivos, análisis de mercado más amplio, mediciones independientes de demanda y competencia, y almacenamiento externo de imágenes. Los catálogos de campañas todavía viven solo en memoria del navegador.
 
 El backend usa una entrada reconocible por Vercel, conexiones perezosas y migraciones externas al ciclo de vida de la Function. La migración 0004 está aplicada en Neon `neon-bole-cave` (rama `main`, base `neondb`); la base local `arbigen` está en 0005. Production no recibió los cambios de esta fase. `frontend/vercel.json` configura la salida Angular, la reescritura de `/api` y el fallback SPA. El código publicado en Production sigue en `main`; los cambios de Development están en una rama local para probarlos antes de publicar. [Arbigen web](https://arbigen-web.vercel.app/) responde en Production; `/api/health` y las rutas protegidas de `/api/v1/` pasan mediante su proxy hacia [Arbigen API](https://arbigen-api.vercel.app/api/health). La base alojada no recibió las investigaciones, productos ni Trends locales. La investigación local histórica ya pertenece a la cuenta registrada en Development; el UUID demo de localStorage no concede acceso.
 
-**Siguiente paso propuesto:** sustituir las campañas de ejemplo y el almacenamiento temporal de Estudio IA y Mis catálogos por campañas persistidas para la cuenta. La generación de imágenes con IA puede incorporarse detrás de un proveedor separado cuando esté disponible. Esta etapa no requiere una nueva búsqueda de Apify.
+**Siguiente paso propuesto:** integrar almacenamiento de imágenes y campañas por cuenta para conservar las generaciones al recargar, sin cargar archivos grandes en PostgreSQL. Esta etapa no requiere una nueva búsqueda de Apify.
 
 Ver [arquitectura e inventario de archivos](docs/architecture.md).

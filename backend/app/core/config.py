@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     apify_actor_id: str = "karamelo/mercadolibre-scraper-espanol-castellano"
     apify_max_pages: int = Field(default=4, ge=1, le=50)
     apify_request_timeout_seconds: int = Field(default=120, ge=10, le=290)
+    openai_api_key: str | None = None
+    openai_image_model: str | None = None
+    openai_image_timeout_seconds: int = Field(default=180, ge=30, le=290)
 
 
 @lru_cache

@@ -1,8 +1,8 @@
-# Arquitectura de Arbigen hasta la fase 21
+# Arquitectura de Arbigen en Development
 
 ## Límite del slice
 
-Se construyeron setup, layout, Dashboard, Explorador, análisis, detalle con simulador, Estudio IA mock, galería de catálogos mock, esquema PostgreSQL y el flujo Angular → FastAPI → PostgreSQL. Las investigaciones de MX/CO/AR pueden pedir una muestra actual de Mercado Libre mediante FastAPI, guardar una serie CSV de Google Trends, preparar un dataset limpio, calcular señales descriptivas, segmentar productos y evaluar un pronóstico temporal. La rentabilidad usa escenarios de investigaciones guardadas; Estudio IA y los catálogos todavía son demostraciones locales.
+Se construyeron setup, layout, Dashboard, Explorador, análisis, detalle con simulador, Estudio IA con generación real de imágenes, esquema PostgreSQL y el flujo Angular → FastAPI → PostgreSQL. Las investigaciones de MX/CO/AR pueden pedir una muestra actual de Mercado Libre mediante FastAPI, guardar una serie CSV de Google Trends, preparar un dataset limpio, calcular señales descriptivas, segmentar productos y evaluar un pronóstico temporal. La rentabilidad usa escenarios de investigaciones guardadas; los catálogos visuales aún viven solo durante la sesión del navegador.
 
 ```text
 Angular Router
@@ -20,10 +20,9 @@ Angular Router
        │    └─ AnalysisChartComponent → ECharts (SVG, datos guardados)
        ├─ SavedOpportunityComponent → GET/PUT /financial-scenario → PostgreSQL
        │    └─ calculateProfitability() → vista previa sobre producto guardado
-       ├─ StudioComponent → StudioDemoService → variantes locales simuladas
-       │    └─ studio-preview.ts → exportación PNG con recorte y filtro
-       ├─ CatalogsComponent → CatalogDemoService → fixtures + campañas de sesión
-       │    └─ studio-preview.ts → variaciones y regeneración locales
+       ├─ StudioComponent → StudioApiService → POST /api/v1/studio/images → OpenAI Images Edits
+       │    └─ CatalogSessionService → campañas y PNG temporales
+       ├─ CatalogsComponent → CatalogSessionService → variaciones con StudioApiService
        └─ PlaceholderComponent → página 404
 
 FastAPI create_app()
@@ -31,7 +30,8 @@ FastAPI create_app()
   ├─ CORS + manejadores de errores
   ├─ health/router.py → HealthResponse
   ├─ analyses/router.py → schemas → service → SQLAlchemy Session
-  └─ dashboard/router.py → service → conteos y actividad por workspace
+  ├─ dashboard/router.py → service → conteos y actividad por workspace
+  └─ studio/router.py → sesión autenticada → OpenAI Images Edits
 
 app/modules/marketplace/domain.py → MarketplaceProduct + MarketplaceSearchProvider
 app/integrations/marketplace_search.py → selección del adaptador en la composición
@@ -59,7 +59,7 @@ alembic/versions/0001–0005 → esquema inicial, Trends, ETL, sesiones y escena
 
 ## Responsabilidades y decisiones
 
-1. `core/models` define los contratos del Dashboard, las búsquedas guardadas, el dataset y sus variables. Los catálogos ilustrativos siguen aislados en `CatalogDemoService`; `AnalysisApiService` encapsula HttpClient para las rutas persistentes.
+1. `core/models` define los contratos del Dashboard, las búsquedas guardadas, el dataset y sus variables. `AnalysisApiService` encapsula HttpClient para las rutas persistentes; `StudioApiService` encapsula la solicitud de imágenes.
 2. `layout` contiene navegación, menú móvil y encabezado. Signals manejan el estado local. Los cambios de ruta cierran el menú y dirigen el foco al contenido.
 3. `features/dashboard` presenta conteos e investigaciones reales; RxJS cancela la solicitud HTTP anterior al cambiar entre 7 y 30 días. No hay servicio de fixtures, ROI ni score inventado en Inicio. El endpoint agregado lee únicamente el workspace del navegador; filtra conteos por `analyses.created_at` y eventos por su propia fecha.
 4. `features/explore` valida la palabra clave (3–120 caracteres tras normalizar espacios) y envía query, país, categoría y periodo a FastAPI. El estado de carga corresponde a una petición HTTP real. El éxito guarda los parámetros y recibe un UUID; no calcula métricas ni obtiene datos de mercado.
@@ -73,9 +73,9 @@ alembic/versions/0001–0005 → esquema inicial, Trends, ETL, sesiones y escena
 12. `profitability.ts` calcula la vista previa por unidad sin consultar el backend. La comisión es un porcentaje del precio de venta y se redondea a centavos. Margen usa el precio como denominador; ROI usa el costo total. El equilibrio busca el menor centavo que cubre los costos tras redondear la comisión. Los cocientes con denominador cero son indefinidos; con 100 % de comisión y costos fijos positivos no existe precio de equilibrio. La vista valida importes no negativos y comisión entre 0 y 100 %; al guardar exige precio de venta positivo.
 13. Los importes se editan primero en una vista previa local y se persisten al pulsar «Guardar escenario». Inicio y la ficha de análisis no muestran ROI o márgenes de fixtures. Impuestos, devoluciones y publicidad deben agregarse a «Otros gastos» si se desean incluir.
 14. `features/studio` mantiene imagen y configuración en memoria mediante Signals. Solo acepta PNG, JPEG y WebP hasta 10 MB, verifica que la imagen se pueda decodificar y libera las URL temporales al reemplazarla o salir. El nombre del producto puede llegar desde un catálogo por query param.
-15. `StudioDemoService` simula una espera y produce parámetros de recorte/filtro para 1–4 vistas. El escenario y descripción se recogen para el contrato futuro, pero no transforman la fotografía. Regenerar cambia el tratamiento local; «Guardar» selecciona una vista para la nueva campaña de demostración.
-16. `studio-preview.ts` exporta a PNG el recorte y filtro mostrados. Ninguna fotografía se envía al backend, a OpenAI ni a almacenamiento; la descarga la inicia el navegador. No existe todavía `ImageGenerationProvider` porque no hay generación real en esta fase.
-17. `features/catalogs` conserva dos fixtures SVG y campañas creadas desde Estudio IA en un servicio singleton con Signals. Los cambios, favoritos y eliminaciones reversibles viven solo en memoria. Cada catálogo tiene hasta cuatro vistas y conserva su original para derivar variaciones locales. Las URL de objetos de la pantalla Studio se liberan al salir; el servicio de catálogos crea sus propias URL para conservar los archivos durante la sesión.
+15. `StudioApiService` envía la foto y la configuración al endpoint autenticado. El backend valida tipo, firma, tamaño y cantidad antes de llamar a OpenAI Images Edits; usa la clave solo en servidor y devuelve los PNG codificados para mostrarlos y descargarlos. Cada petición explícita puede generar un cargo.
+16. `StudioComponent` crea URL de objeto para las imágenes reales y las libera al sustituir el resultado o salir. La selección de vistas crea una campaña temporal; ninguna imagen de ejemplo se mezcla con las generadas.
+17. `features/catalogs` conserva campañas creadas desde Estudio IA en `CatalogSessionService`. Los cambios, favoritos y eliminaciones reversibles viven solo en memoria. Cada catálogo tiene hasta cuatro vistas y conserva la foto original para pedir nuevas variaciones reales. El almacenamiento por cuenta y el almacenamiento externo de imágenes siguen pendientes.
 18. El backend contiene los módulos `health` y `analyses`, cada uno con rutas y contratos propios; `analyses` separa además la persistencia en un servicio. `main.py` solo monta middleware, errores y routers.
 19. La API configura errores con envelope `{"error":{"code":"...","message":"..."}}`; los errores internos se registran sin exponer el traceback al cliente. CORS permite solo orígenes configurados.
 20. La fase 8 añade `User`, `Analysis`, `Product`, `TrendPoint`, `Cluster`, `Opportunity`, `Campaign` y `GeneratedAsset` como tablas PostgreSQL. UUID y fechas con zona horaria tienen defaults del servidor; JSONB guarda atributos de producto. Las imágenes se referencian mediante URL, sin bytes en la base.

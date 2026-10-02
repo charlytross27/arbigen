@@ -1,11 +1,11 @@
 import { Component, computed, inject, OnDestroy, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { CampaignAspectRatio, CampaignConfiguration, CampaignLighting, CampaignStyle, StudioVariant } from '../../core/models/campaign.model';
 import { IconComponent } from '../../shared/icon.component';
-import { CatalogDemoService } from '../catalogs/catalog-demo.service';
-import { StudioDemoService } from './studio-demo.service';
-import { renderStudioPreview } from './studio-preview';
+import { CatalogSessionService } from '../catalogs/catalog-session.service';
+import { StudioApiService, StudioGenerationResponse } from './studio-api.service';
 
 interface SourceImage {
   readonly file: File;
@@ -27,19 +27,16 @@ const ACCEPTED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 export class StudioComponent implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly demo = inject(StudioDemoService);
-  private readonly catalogs = inject(CatalogDemoService);
+  private readonly api = inject(StudioApiService);
+  private readonly catalogs = inject(CatalogSessionService);
   private generationSubscription: Subscription | null = null;
-  private progressTimer: number | null = null;
   private uploadVersion = 0;
   private generationVersion = 0;
-  private round = 0;
   private destroyed = false;
 
   readonly styles: readonly CampaignStyle[] = ['Minimalista', 'Premium', 'Lifestyle', 'Urbano', 'Natural', 'Studio'];
   readonly lightingOptions: readonly CampaignLighting[] = ['Natural', 'Cálida', 'Fría', 'Estudio', 'Dramática'];
   readonly ratios: readonly CampaignAspectRatio[] = ['1:1', '4:5', '16:9'];
-  readonly loadingMessages = ['Preparando la fotografía original', 'Aplicando recortes y filtros locales', 'Organizando vistas previas'];
 
   readonly source = signal<SourceImage | null>(null);
   readonly configuration = signal<CampaignConfiguration>({
@@ -53,9 +50,9 @@ export class StudioComponent implements OnDestroy {
   readonly previewBlobs = signal<ReadonlyMap<string, Blob>>(new Map());
   readonly savedIds = signal<ReadonlySet<string>>(new Set());
   readonly saveError = signal<string | null>(null);
+  readonly generationError = signal<string | null>(null);
   readonly fileError = signal<string | null>(null);
   readonly formTouched = signal(false);
-  readonly loadingStep = signal(0);
   readonly canGenerate = computed(() => {
     const config = this.configuration();
     return !!this.source() && config.productName.trim().length >= 2 && config.scene.trim().length >= 3 && this.status() !== 'loading';
@@ -139,7 +136,7 @@ export class StudioComponent implements OnDestroy {
 
   generate(): void {
     this.formTouched.set(true);
-    if (!this.source()) this.fileError.set('Sube una fotografía para preparar las vistas previas.');
+    if (!this.source()) this.fileError.set('Sube una fotografía para generar las imágenes.');
     if (!this.canGenerate()) return;
 
     this.cancelPending();
@@ -147,19 +144,16 @@ export class StudioComponent implements OnDestroy {
     this.variants.set([]);
     this.savedIds.set(new Set());
     this.status.set('loading');
-    this.loadingStep.set(0);
-    this.progressTimer = window.setInterval(() => this.loadingStep.update(step => Math.min(step + 1, 2)), 450);
+    this.generationError.set(null);
     const version = ++this.generationVersion;
-    this.generationSubscription = this.demo.generate(this.configuration(), ++this.round).subscribe({
-      next: variants => { void this.prepareVariants(variants, version); },
-      error: () => { this.status.set('error'); this.stopProgress(); },
+    this.generationSubscription = this.api.generate(this.source()!.file, this.configuration()).subscribe({
+      next: result => { void this.prepareVariants(result, version); },
+      error: (error: HttpErrorResponse) => {
+        if (version !== this.generationVersion || this.destroyed) return;
+        this.generationError.set(error.error?.error?.message ?? 'No pudimos generar las imágenes. Inténtalo de nuevo.');
+        this.status.set('error');
+      },
     });
-  }
-
-  cancelGeneration(): void {
-    ++this.generationVersion;
-    this.cancelPending();
-    this.status.set('idle');
   }
 
   toggleSaved(id: string): void {
@@ -187,22 +181,24 @@ export class StudioComponent implements OnDestroy {
       const campaign = this.catalogs.saveFromStudio(this.configuration(), image.file, previews);
       void this.router.navigate(['/catalogs', campaign.id]);
     } catch {
-      this.saveError.set('No pudimos crear el catálogo de demostración.');
+      this.saveError.set('No pudimos crear el catálogo.');
     }
   }
 
   fileSize(size: number): string { return `${Math.round(size / 1024)} KB`; }
 
-  private async prepareVariants(variants: readonly StudioVariant[], version: number): Promise<void> {
-    const image = this.source();
-    if (!image) return;
+  private async prepareVariants(result: StudioGenerationResponse, version: number): Promise<void> {
     const urls = new Map<string, string>();
     const blobs = new Map<string, Blob>();
+    const variants: StudioVariant[] = [];
     try {
-      for (const variant of variants) {
-        const blob = await renderStudioPreview(image.url, variant, this.configuration().aspectRatio);
+      for (const [index, generated] of result.images.entries()) {
+        const variant: StudioVariant = { id: `${version}-${index + 1}`, label: `Escena ${index + 1}` };
+        const blob = await fetch(`data:${generated.mime_type};base64,${generated.image_base64}`).then(response => response.blob());
+        if (blob.type !== 'image/png' || !blob.size) throw new Error('Imagen inválida.');
         urls.set(variant.id, URL.createObjectURL(blob));
         blobs.set(variant.id, blob);
+        variants.push(variant);
       }
       if (version !== this.generationVersion || this.destroyed) {
         for (const url of urls.values()) URL.revokeObjectURL(url);
@@ -212,12 +208,11 @@ export class StudioComponent implements OnDestroy {
       this.previewBlobs.set(blobs);
       this.variants.set(variants);
       this.status.set('success');
-      this.stopProgress();
     } catch {
       for (const url of urls.values()) URL.revokeObjectURL(url);
       if (version === this.generationVersion && !this.destroyed) {
+        this.generationError.set('No pudimos preparar las imágenes recibidas. Inténtalo de nuevo.');
         this.status.set('error');
-        this.stopProgress();
       }
     }
   }
@@ -229,6 +224,7 @@ export class StudioComponent implements OnDestroy {
     this.variants.set([]);
     this.savedIds.set(new Set());
     this.saveError.set(null);
+    this.generationError.set(null);
     this.clearDownloads();
   }
 
@@ -241,12 +237,6 @@ export class StudioComponent implements OnDestroy {
   private cancelPending(): void {
     this.generationSubscription?.unsubscribe();
     this.generationSubscription = null;
-    this.stopProgress();
-  }
-
-  private stopProgress(): void {
-    if (this.progressTimer !== null) window.clearInterval(this.progressTimer);
-    this.progressTimer = null;
   }
 
   ngOnDestroy(): void {

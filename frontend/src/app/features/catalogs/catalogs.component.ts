@@ -1,12 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { map, timer } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import type { CatalogCampaign } from '../../core/models/catalog.model';
 import { IconComponent } from '../../shared/icon.component';
-import { CatalogDemoService } from './catalog-demo.service';
-
-type CatalogScope = 'all' | 'examples' | 'session';
+import { CatalogSessionService } from './catalog-session.service';
 
 @Component({
   selector: 'app-catalogs', standalone: true,
@@ -16,25 +14,22 @@ type CatalogScope = 'all' | 'examples' | 'session';
 export class CatalogsComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  readonly catalog = inject(CatalogDemoService);
+  readonly catalog = inject(CatalogSessionService);
 
   private readonly routeParams = toSignal(this.route.paramMap, { initialValue: this.route.snapshot.paramMap });
-  readonly ready = toSignal(timer(220).pipe(map(() => true)), { initialValue: false });
   readonly routeId = computed(() => this.routeParams().get('id'));
   readonly selected = computed(() => {
     const id = this.routeId();
     return id ? this.catalog.campaigns().find(item => item.id === id) ?? null : null;
   });
   readonly search = signal('');
-  readonly scope = signal<CatalogScope>('all');
   readonly busyAction = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
 
   readonly filtered = computed(() => {
     const query = this.search().trim().toLocaleLowerCase('es-MX');
     return this.catalog.campaigns().filter(item =>
-      (this.scope() === 'all' || item.origin === (this.scope() === 'examples' ? 'example' : 'session'))
-      && (!query || `${item.name} ${item.productName} ${item.configuration.style}`.toLocaleLowerCase('es-MX').includes(query))
+      !query || `${item.name} ${item.productName} ${item.configuration.style}`.toLocaleLowerCase('es-MX').includes(query)
     );
   });
 
@@ -43,12 +38,11 @@ export class CatalogsComponent {
     return {
       campaigns: campaigns.length,
       assets: campaigns.reduce((sum, item) => sum + item.assets.length, 0),
-      session: campaigns.filter(item => item.origin === 'session').length,
+      session: campaigns.length,
     };
   });
 
   setSearch(event: Event): void { this.search.set((event.target as HTMLInputElement).value); }
-  setScope(scope: CatalogScope): void { this.scope.set(scope); }
   formatDate(date: string): string { return new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(date)); }
 
   deleteCampaign(id: string): void {
@@ -61,7 +55,7 @@ export class CatalogsComponent {
     this.actionError.set(null);
     this.busyAction.set('add');
     try { await this.catalog.addVariation(campaign.id); }
-    catch { this.actionError.set('No pudimos crear la vista local. Inténtalo de nuevo.'); }
+    catch (error) { this.actionError.set(this.apiError(error)); }
     finally { this.busyAction.set(null); }
   }
 
@@ -70,7 +64,13 @@ export class CatalogsComponent {
     this.actionError.set(null);
     this.busyAction.set(assetId);
     try { await this.catalog.regenerateAsset(campaign.id, assetId); }
-    catch { this.actionError.set('No pudimos regenerar esta vista local. Inténtalo de nuevo.'); }
+    catch (error) { this.actionError.set(this.apiError(error)); }
     finally { this.busyAction.set(null); }
+  }
+
+  private apiError(error: unknown): string {
+    return error instanceof HttpErrorResponse
+      ? error.error?.error?.message ?? 'No pudimos generar la imagen. Comprueba tu conexión antes de reintentar.'
+      : 'No pudimos preparar la imagen. Inténtalo de nuevo.';
   }
 }
