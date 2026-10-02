@@ -7,12 +7,12 @@
   } @else if (view.status === 'error') {
     <section class="panel message-state" role="alert"><app-icon name="info" /><h1>No pudimos abrir la oportunidad</h1><p>Hubo un problema al preparar los datos de demostración.</p><button class="button primary" (click)="retry()">Volver a intentar</button></section>
   } @else if (view.status === 'empty') {
-    <section class="panel message-state"><app-icon name="search" /><span class="eyebrow">SIN DATOS DE EJEMPLO</span><h1>Esta oportunidad aún no está disponible.</h1><p>Explora una de las oportunidades ficticias del Dashboard para probar el simulador.</p><a routerLink="/" class="button primary">Ver oportunidades<app-icon name="arrow" /></a></section>
+    <section class="panel message-state"><app-icon name="search" /><span class="eyebrow">SIN DATOS DE EJEMPLO</span><h1>Esta oportunidad aún no está disponible.</h1><p>Abre una investigación guardada para evaluar la rentabilidad con tus propios datos.</p><a routerLink="/analyses" class="button primary">Ver Mis análisis<app-icon name="arrow" /></a></section>
   } @else {
     @let item = view.opportunity;
     <header class="opportunity-heading">
       <div class="heading-main"><span class="eyebrow">INTELIGENCIA DE MERCADO <span>/</span> OPORTUNIDAD</span><h1>{{ item.product }}</h1><p>Explora las señales de este producto y ajusta sus costos para estimar la rentabilidad por unidad.</p><div class="heading-tags"><span><app-icon name="globe" />{{ item.country }}</span><span><app-icon name="catalog" />{{ item.category }}</span><span><app-icon name="trend" />Tendencia {{ item.trend.toLowerCase() }}</span></div></div>
-      <div class="heading-actions">@if (item.analysisId) { <a [routerLink]="['/analysis', item.analysisId]" class="button secondary"><app-icon name="chart" />Ver análisis</a> }<a routerLink="/studio" [queryParams]="{ product: item.product, opportunity: item.id }" class="button primary"><app-icon name="sparkles" />Abrir Estudio IA</a></div>
+      <div class="heading-actions"><a routerLink="/studio" [queryParams]="{ product: item.product, opportunity: item.id }" class="button primary"><app-icon name="sparkles" />Abrir Estudio IA</a></div>
     </header>
 
     <div class="data-notice"><app-icon name="info" /><p><strong>Datos de mercado ficticios.</strong> Productos similares, precios, demanda, competencia y puntuación son ejemplos. Solo los resultados del simulador se calculan con los importes que ingresas; no son una predicción de ventas.</p></div>

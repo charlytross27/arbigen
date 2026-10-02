@@ -1,5 +1,8 @@
-import { CompetitionLevel, DemandLevel, TrendType } from './analysis.model';
 import { IconName } from '../../shared/icon.component';
+
+type DemandLevel = 'Alta' | 'Media' | 'Baja';
+type CompetitionLevel = 'Alta' | 'Media' | 'Baja';
+type TrendType = 'Creciente' | 'Estable' | 'Estacional';
 
 export interface FinancialInputs {
   readonly productCost: number;
@@ -17,7 +20,6 @@ export interface SimilarProduct {
 
 export interface OpportunityDetail {
   readonly id: string;
-  readonly analysisId: string | null;
   readonly product: string;
   readonly category: string;
   readonly symbol: Extract<IconName, 'ring' | 'lamp' | 'cup' | 'bag'>;

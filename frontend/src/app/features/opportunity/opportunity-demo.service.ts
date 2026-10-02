@@ -1,10 +1,30 @@
 import { Injectable } from '@angular/core';
 import { Observable, delay, of } from 'rxjs';
-import { AnalysisFixture } from '../../core/models/analysis.model';
 import { OpportunityDetail, SimilarProduct } from '../../core/models/opportunity.model';
-import { ANALYSIS_FIXTURES } from '../analysis/analysis.fixtures';
 
 type DemoExtras = Pick<OpportunityDetail, 'symbol' | 'characteristics' | 'importantVariables' | 'similarProducts' | 'defaults'>;
+type DemoSeed = Pick<OpportunityDetail, 'id' | 'product' | 'category' | 'country' | 'currency' | 'score' | 'trend' | 'competition' | 'competitorCount' | 'demand' | 'averagePrice' | 'cluster' | 'clusterDescription'>;
+
+const SEEDS: readonly DemoSeed[] = [
+  {
+    id: 'demo-rings', product: 'Anillos de plata ajustables', category: 'Joyería y accesorios',
+    country: 'México', currency: 'MXN', score: 87, trend: 'Creciente', competition: 'Media',
+    competitorCount: 23, demand: 'Alta', averagePrice: 420,
+    cluster: 'Minimalista / Plata / Ajustable', clusterDescription: 'Estilo definido y demanda ilustrativa alta.',
+  },
+  {
+    id: 'demo-lamps', product: 'Lámparas de mesa nórdicas', category: 'Hogar y decoración',
+    country: 'México', currency: 'MXN', score: 82, trend: 'Creciente', competition: 'Media',
+    competitorCount: 31, demand: 'Alta', averagePrice: 870,
+    cluster: 'Nórdica / compacta', clusterDescription: 'Diseño definido con demanda ilustrativa alta.',
+  },
+  {
+    id: 'demo-cups', product: 'Vasos térmicos de acero', category: 'Lifestyle y cocina',
+    country: 'México', currency: 'MXN', score: 78, trend: 'Estable', competition: 'Alta',
+    competitorCount: 47, demand: 'Alta', averagePrice: 335,
+    cluster: 'Acero / minimalista', clusterDescription: 'Diseño sobrio y precio medio.',
+  },
+];
 
 // MOCK: nombres, precios, competidores y señales son ejemplos inventados.
 const EXTRAS: Record<string, DemoExtras> = {
@@ -52,15 +72,10 @@ const EXTRAS: Record<string, DemoExtras> = {
   },
 };
 
-function fromAnalysis(fixture: AnalysisFixture): OpportunityDetail {
-  const cluster = fixture.clusters.find(item => item.recommended) ?? fixture.clusters[0];
-  const extra = EXTRAS[fixture.id];
+function fromSeed(seed: DemoSeed): OpportunityDetail {
+  const extra = EXTRAS[seed.id];
   return {
-    id: fixture.id, analysisId: fixture.id, product: fixture.product, category: fixture.category,
-    country: fixture.country, currency: fixture.currency, score: fixture.score,
-    trend: fixture.trend, competition: fixture.competition, competitorCount: fixture.competitorCount,
-    demand: fixture.demand, averagePrice: fixture.averagePrice,
-    cluster: cluster.label, clusterDescription: cluster.description,
+    ...seed,
     ...extra,
   };
 }
@@ -72,9 +87,9 @@ const BAG_PRODUCTS: readonly SimilarProduct[] = [
 ];
 
 const OPPORTUNITIES: readonly OpportunityDetail[] = [
-  ...ANALYSIS_FIXTURES.map(fromAnalysis),
+  ...SEEDS.map(fromSeed),
   {
-    id: 'demo-bags', analysisId: null, product: 'Bolsos tejidos artesanales',
+    id: 'demo-bags', product: 'Bolsos tejidos artesanales',
     category: 'Moda y accesorios', symbol: 'bag', country: 'México', currency: 'MXN',
     score: 81, trend: 'Estacional', competition: 'Media', competitorCount: 28,
     demand: 'Media', averagePrice: 630, cluster: 'Artesanal / fibra natural',

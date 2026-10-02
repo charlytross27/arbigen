@@ -4,8 +4,7 @@ import { DecimalPipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
-import { AnalysisView } from '../../core/models/analysis.model';
-import { AnalysisPeriod, SavedAnalysis } from '../../core/models/saved-analysis.model';
+import { SavedAnalysis } from '../../core/models/saved-analysis.model';
 import { MarketplaceSearch } from '../../core/models/marketplace-product.model';
 import { AnalyticalDataset } from '../../core/models/analytical-dataset.model';
 import { AnalysisFeatures } from '../../core/models/analysis-features.model';
@@ -16,17 +15,14 @@ import { TrendsSeries } from '../../core/models/trends.model';
 import type { EChartsOption } from 'echarts';
 import { AnalysisApiService } from '../../core/services/analysis-api.service';
 import { IconComponent } from '../../shared/icon.component';
-import { buildAnalysisCharts } from './analysis-chart-options';
+import { buildPriceDistributionChart } from './saved-analysis-charts';
 import { AnalysisChartComponent } from './chart.component';
-import { AnalysisDemoService } from './analysis-demo.service';
 
 type AnalysisState =
   | { readonly status: 'loading' }
-  | { readonly status: 'empty'; readonly query: string | null; readonly country: string | null }
   | { readonly status: 'missing' }
   | { readonly status: 'error' }
-  | { readonly status: 'saved'; readonly item: SavedAnalysis }
-  | { readonly status: 'success'; readonly view: AnalysisView };
+  | { readonly status: 'saved'; readonly item: SavedAnalysis };
 
 type MarketplaceState =
   | { readonly analysisId: string; readonly status: 'loading' }
@@ -72,7 +68,6 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 })
 export class AnalysisComponent {
   private readonly route = inject(ActivatedRoute);
-  private readonly demo = inject(AnalysisDemoService);
   private readonly api = inject(AnalysisApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly reload = signal(0);
@@ -89,57 +84,24 @@ export class AnalysisComponent {
   };
   readonly scoreWeights: ScoreWeights = { growth: 0.25, stability: 0.15, margin: 0.35, roi: 0.25 };
 
-  readonly periodLabels: Record<AnalysisPeriod, string> = {
-    '3m': 'Últimos 3 meses', '6m': 'Últimos 6 meses', '12m': 'Últimos 12 meses',
-  };
-
   readonly state = toSignal(combineLatest([
     this.route.paramMap,
-    this.route.queryParamMap,
     toObservable(this.reload),
   ]).pipe(
-    switchMap(([params, queryParams]) => {
+    switchMap(([params]) => {
       const id = params.get('id');
-      if (id && UUID_PATTERN.test(id)) {
-        return this.api.get(id).pipe(
-          map((item): AnalysisState => ({ status: 'saved', item })),
-          startWith<AnalysisState>({ status: 'loading' }),
-          catchError((error: HttpErrorResponse) => of<AnalysisState>(error.status === 404 ? { status: 'missing' } : { status: 'error' })),
-        );
-      }
-      const query = queryParams.get('q')?.slice(0, 120) ?? null;
-      const country = queryParams.get('country');
-      const category = queryParams.get('category');
-      const period = this.asPeriod(queryParams.get('period'));
-      return this.demo.getAnalysis(id, query, country, category).pipe(
-        map((fixture): AnalysisState => fixture
-          ? { status: 'success', view: { fixture, period } }
-          : { status: 'empty', query, country }),
+      if (!id || !UUID_PATTERN.test(id)) return of<AnalysisState>({ status: 'missing' });
+      return this.api.get(id).pipe(
+        map((item): AnalysisState => ({ status: 'saved', item })),
         startWith<AnalysisState>({ status: 'loading' }),
-        catchError(() => of<AnalysisState>({ status: 'error' })),
+        catchError((error: HttpErrorResponse) => of<AnalysisState>(error.status === 404 ? { status: 'missing' } : { status: 'error' })),
       );
     }),
   ), { initialValue: { status: 'loading' } as AnalysisState });
 
-  readonly charts = computed(() => {
-    const state = this.state();
-    return state.status === 'success' ? buildAnalysisCharts(state.view.fixture, state.view.period) : null;
-  });
-
-  readonly recommendedCluster = computed(() => {
-    const state = this.state();
-    return state.status === 'success'
-      ? state.view.fixture.clusters.find(cluster => cluster.recommended) ?? null
-      : null;
-  });
-
-  readonly rangeSummary = computed(() => {
-    const state = this.state();
-    if (state.status !== 'success') return '';
-    const values = state.view.fixture.interest;
-    const count = state.view.period === '3m' ? 3 : state.view.period === '6m' ? 6 : 12;
-    const visible = values.slice(-count);
-    return `El índice ilustrativo va de ${Math.min(...visible)} a ${Math.max(...visible)} en el periodo mostrado.`;
+  readonly priceDistributionChart = computed<EChartsOption | null>(() => {
+    const current = this.dataset();
+    return current?.status === 'success' ? buildPriceDistributionChart(current.data.products, current.data.country) : null;
   });
 
   readonly trendsChart = computed<EChartsOption | null>(() => {
@@ -517,9 +479,5 @@ export class AnalysisComponent {
 
   formatDate(value: string): string {
     return new Intl.DateTimeFormat('es-MX', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(value));
-  }
-
-  private asPeriod(value: string | null): AnalysisPeriod {
-    return value === '3m' || value === '6m' ? value : '12m';
   }
 }
