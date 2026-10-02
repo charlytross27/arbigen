@@ -38,38 +38,40 @@ def test_private_registration_sessions_csrf_and_user_isolation() -> None:
         outsider_email = f"outsider-{uuid4()}@example.com"
         password = "correct-horse-battery-staple"
         with TestClient(app) as owner, TestClient(app) as outsider:
-                assert owner.get("/api/v1/dashboard").status_code == 401
-                assert owner.get("/api/v1/analyses", headers={"X-Demo-Workspace-ID": str(uuid4())}).status_code == 401
-                payload = {"name": "Dueña", "email": owner_email, "password": password,
-                           "invitation_code": INVITATION}
-                assert owner.post("/api/v1/auth/register", json=payload, headers={"Origin": "https://attacker.example"}).status_code == 403
-                assert owner.post("/api/v1/auth/register", json=payload | {"invitation_code": "incorrecto"}, headers=ORIGIN).status_code == 403
-                registered = owner.post("/api/v1/auth/register", json=payload, headers=ORIGIN)
-                assert registered.status_code == 201
-                assert registered.json()["user"]["email"] == owner_email
-                assert "HttpOnly" in registered.headers["set-cookie"]
-                assert "SameSite=strict" in registered.headers["set-cookie"]
-                assert owner.get("/api/v1/auth/me").json()["user"]["email"] == owner_email
-                assert owner.post("/api/v1/analyses", json={"query": "anillos de plata", "country": "MX", "period_months": 3},
-                                  headers=ORIGIN).status_code == 403
-                csrf = registered.json()["csrf_token"]
-                saved = owner.post("/api/v1/analyses", json={"query": "anillos de plata", "country": "MX", "period_months": 3},
-                                   headers=ORIGIN | {"X-CSRF-Token": csrf})
-                assert saved.status_code == 201
-                assert owner.get("/api/v1/analyses").json()["total"] == 1
-                assert owner.get("/api/v1/analyses").headers["cache-control"] == "private, no-store"
+            assert owner.get("/api/v1/dashboard").status_code == 401
+            assert owner.get("/api/v1/analyses", headers={"X-Demo-Workspace-ID": str(uuid4())}).status_code == 401
+            payload = {"name": "Dueña", "email": owner_email, "password": password,
+                       "invitation_code": INVITATION}
+            assert owner.post("/api/v1/auth/register", json=payload, headers={"Origin": "https://attacker.example"}).status_code == 403
+            assert owner.post("/api/v1/auth/register", json=payload | {"invitation_code": "incorrecto"}, headers=ORIGIN).status_code == 403
+            registered = owner.post("/api/v1/auth/register", json=payload, headers=ORIGIN)
+            assert registered.status_code == 201
+            assert registered.json()["user"]["email"] == owner_email
+            assert "HttpOnly" in registered.headers["set-cookie"]
+            assert "SameSite=strict" in registered.headers["set-cookie"]
+            assert owner.get("/api/v1/auth/me").json()["user"]["email"] == owner_email
+            assert owner.post("/api/v1/analyses", json={"query": "anillos de plata", "country": "MX", "period_months": 3},
+                              headers=ORIGIN).status_code == 403
+            csrf = registered.json()["csrf_token"]
+            saved = owner.post("/api/v1/analyses", json={"query": "anillos de plata", "country": "MX", "period_months": 3},
+                               headers=ORIGIN | {"X-CSRF-Token": csrf})
+            assert saved.status_code == 201
+            assert owner.get("/api/v1/analyses").json()["total"] == 1
+            assert owner.get("/api/v1/analyses").headers["cache-control"] == "private, no-store"
 
-                registered_outsider = outsider.post("/api/v1/auth/register", headers=ORIGIN, json=payload | {"email": outsider_email})
-                assert registered_outsider.status_code == 201
-                assert outsider.get("/api/v1/analyses").json()["total"] == 0
-                assert outsider.get(f"/api/v1/analyses/{saved.json()['id']}").status_code == 404
-                assert owner.post("/api/v1/auth/logout", headers=ORIGIN | {"X-CSRF-Token": csrf}).status_code == 204
-                assert owner.get("/api/v1/auth/me").status_code == 401
-                assert owner.post("/api/v1/auth/login", headers=ORIGIN,
-                                  json={"email": owner_email, "password": "wrong-password"}).status_code == 401
-                logged_in = owner.post("/api/v1/auth/login", headers=ORIGIN,
-                                       json={"email": owner_email, "password": password})
-                assert logged_in.status_code == 200
-                assert owner.get("/api/v1/analyses").json()["total"] == 1
+            registered_outsider = outsider.post("/api/v1/auth/register", headers=ORIGIN, json=payload | {"email": outsider_email})
+            assert registered_outsider.status_code == 201
+            assert outsider.get("/api/v1/analyses").json()["total"] == 0
+            assert outsider.get(f"/api/v1/analyses/{saved.json()['id']}").status_code == 404
+            logged_out = owner.post("/api/v1/auth/logout", headers=ORIGIN | {"X-CSRF-Token": csrf})
+            assert logged_out.status_code == 204
+            assert "SameSite=strict" in logged_out.headers["set-cookie"]
+            assert owner.get("/api/v1/auth/me").status_code == 401
+            assert owner.post("/api/v1/auth/login", headers=ORIGIN,
+                              json={"email": owner_email, "password": "wrong-password"}).status_code == 401
+            logged_in = owner.post("/api/v1/auth/login", headers=ORIGIN,
+                                   json={"email": owner_email, "password": password})
+            assert logged_in.status_code == 200
+            assert owner.get("/api/v1/analyses").json()["total"] == 1
     finally:
         engine.dispose()

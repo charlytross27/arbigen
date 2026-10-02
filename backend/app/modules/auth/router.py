@@ -176,4 +176,7 @@ def logout(
 ) -> None:
     session.delete(identity[0])
     session.commit()
-    response.delete_cookie(_cookie_name(settings), path="/")
+    response.delete_cookie(
+        _cookie_name(settings), path="/", secure=settings.environment == "production",
+        httponly=True, samesite="strict",
+    )
