@@ -4,7 +4,7 @@ import os
 from collections.abc import Iterator
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,6 +15,7 @@ from app.core.config import Settings
 from app.database.models import Analysis, MarketplaceSnapshot, Product, TrendPoint
 from app.database.session import database_url, get_session
 from app.main import create_app
+from tests.auth_support import authenticated_headers
 
 
 @pytest.mark.skipif(not os.getenv("ARBIGEN_TEST_DATABASE_URL"), reason="Requiere PostgreSQL local explícito y migrado")
@@ -31,8 +32,8 @@ def test_dashboard_counts_period_and_workspace_without_marketplace_calls() -> No
                     yield session
 
             app.dependency_overrides[get_session] = test_session
-            owner = {"X-Demo-Workspace-ID": str(uuid4())}
-            outsider = {"X-Demo-Workspace-ID": str(uuid4())}
+            owner = authenticated_headers(connection)
+            outsider = authenticated_headers(connection)
             payload = {"query": "juguetes de bebe", "country": "MX", "period_months": 12}
             with TestClient(app) as client:
                 recent_id = UUID(client.post("/api/v1/analyses", headers=owner, json=payload).json()["id"])
@@ -65,7 +66,7 @@ def test_dashboard_counts_period_and_workspace_without_marketplace_calls() -> No
                 thirty = client.get(endpoint, headers=owner, params={"days": 30}).json()
                 assert thirty["analysis_count"] == 2 and len(thirty["recent"]) == 2
                 assert client.get(endpoint, headers=outsider).json()["analysis_count"] == 1
-                assert client.get(endpoint, headers={"X-Demo-Workspace-ID": str(uuid4())}).json()["analysis_count"] == 0
+                assert client.get(endpoint, headers=authenticated_headers(connection)).json()["analysis_count"] == 0
                 assert client.get(endpoint, headers=owner, params={"days": 14}).status_code == 422
             transaction.rollback()
     finally:

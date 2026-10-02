@@ -9,14 +9,12 @@ import { ClusterReport } from '../models/analysis-clusters.model';
 import { ForecastReport } from '../models/analysis-forecast.model';
 import { OpportunityScoreReport, ScorePreviewRequest } from '../models/opportunity-score.model';
 import { DashboardData, DashboardPeriod } from '../models/dashboard.model';
-
-const WORKSPACE_KEY = 'arbigen-demo-workspace-id';
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { AuthService } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class AnalysisApiService {
   private readonly http = inject(HttpClient);
-  private readonly workspaceId = this.loadWorkspaceId();
+  private readonly auth = inject(AuthService);
   private readonly baseUrl = '/api/v1/analyses';
 
   create(payload: CreateAnalysisRequest): Observable<SavedAnalysis> {
@@ -80,19 +78,6 @@ export class AnalysisApiService {
   }
 
   private headers(): HttpHeaders {
-    return new HttpHeaders({ 'X-Demo-Workspace-ID': this.workspaceId });
-  }
-
-  private loadWorkspaceId(): string {
-    try {
-      const existing = window.localStorage.getItem(WORKSPACE_KEY);
-      if (existing && UUID_PATTERN.test(existing)) return existing;
-      const created = window.crypto.randomUUID();
-      window.localStorage.setItem(WORKSPACE_KEY, created);
-      return created;
-    } catch {
-      // La demo también funciona si el navegador bloquea localStorage; no persiste su ID.
-      return window.crypto.randomUUID();
-    }
+    return this.auth.csrfHeaders();
   }
 }

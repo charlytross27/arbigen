@@ -2,7 +2,6 @@ import os
 from collections.abc import Iterator
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,6 +13,7 @@ from app.database.models import MarketplaceSnapshot, Product
 from app.database.session import database_url, get_session
 from app.integrations.marketplace_search import get_marketplace_search_provider
 from app.main import create_app
+from tests.auth_support import authenticated_headers
 from app.modules.etl.pipeline import prepare_dataset
 from app.modules.marketplace.domain import MarketplaceProduct, MarketplaceSearchResult
 from app.modules.trends.domain import TrendObservation
@@ -96,8 +96,8 @@ def test_dataset_api_refreshes_once_and_reprocesses_without_provider() -> None:
             provider = FakeProvider()
             app.dependency_overrides[get_session] = test_session
             app.dependency_overrides[get_marketplace_search_provider] = lambda: provider
-            owner = {"X-Demo-Workspace-ID": str(uuid4())}
-            outsider = {"X-Demo-Workspace-ID": str(uuid4())}
+            owner = authenticated_headers(connection)
+            outsider = authenticated_headers(connection)
             with TestClient(app) as client:
                 created = client.post("/api/v1/analyses", headers=owner, json={"query": "anillos de plata", "country": "MX", "period_months": 3})
                 assert created.status_code == 201

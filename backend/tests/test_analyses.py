@@ -1,6 +1,5 @@
 import os
 from collections.abc import Iterator
-from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.database.session import database_url, get_session
 from app.main import create_app
+from tests.auth_support import authenticated_headers
 from app.modules.analyses.schemas import AnalysisCreate
 
 
@@ -21,7 +21,7 @@ def test_create_payload_normalizes_search_without_market_metrics() -> None:
 
 
 @pytest.mark.skipif(not os.getenv("ARBIGEN_TEST_DATABASE_URL"), reason="Requiere PostgreSQL local de prueba explícito y migrado")
-def test_analysis_api_persists_lists_and_isolates_demo_workspaces() -> None:
+def test_analysis_api_persists_lists_and_isolates_authenticated_users() -> None:
     settings = Settings(database_url=os.environ["ARBIGEN_TEST_DATABASE_URL"], environment="test", _env_file=None)
     engine = create_engine(database_url(settings))
     try:
@@ -34,8 +34,8 @@ def test_analysis_api_persists_lists_and_isolates_demo_workspaces() -> None:
                     yield session
 
             app.dependency_overrides[get_session] = test_session
-            first_workspace = {"X-Demo-Workspace-ID": str(uuid4())}
-            other_workspace = {"X-Demo-Workspace-ID": str(uuid4())}
+            first_workspace = authenticated_headers(connection)
+            other_workspace = authenticated_headers(connection)
             try:
                 with TestClient(app) as client:
                     invalid = client.post("/api/v1/analyses", headers=first_workspace, json={"query": "  ", "country": "MX", "period_months": 6})

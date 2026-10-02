@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:4200"]
     database_url: str | None = None
     database_migration_url: str | None = None
+    auth_registration_code: str | None = Field(default=None, min_length=24)
     mercado_libre_access_token: str | None = None
     marketplace_search_provider: Literal["auto", "apify", "mercado_libre"] = "auto"
     max_products_per_analysis: int = Field(default=200, ge=1, le=1000)

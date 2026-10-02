@@ -1,11 +1,17 @@
 import { Routes } from '@angular/router';
 import { ShellComponent } from './layout/shell.component';
+import { authGuard } from './core/services/auth.guard';
 
 const placeholder = () => import('./features/placeholder/placeholder.component').then(m => m.PlaceholderComponent);
 
-export const routes: Routes = [{
+export const routes: Routes = [
+  { path: 'login', title: 'Iniciar sesión · Arbigen', loadComponent: () => import('./features/auth/auth.component').then(m => m.AuthComponent) },
+  { path: 'register', title: 'Crear cuenta · Arbigen', loadComponent: () => import('./features/auth/auth.component').then(m => m.AuthComponent) },
+  {
   path: '',
   component: ShellComponent,
+  canActivate: [authGuard],
+  canActivateChild: [authGuard],
   children: [
     { path: '', pathMatch: 'full', title: 'Inicio · Arbigen', loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent) },
     { path: 'explore', title: 'Explorar oportunidades · Arbigen', loadComponent: () => import('./features/explore/explore.component').then(m => m.ExploreComponent) },
@@ -19,4 +25,5 @@ export const routes: Routes = [{
     { path: 'profile', title: 'Perfil · Arbigen', loadComponent: placeholder, data: { kind: 'profile' } },
     { path: '**', title: 'Página no encontrada · Arbigen', loadComponent: placeholder, data: { kind: 'not-found' } },
   ],
-}];
+  },
+];

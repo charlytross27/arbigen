@@ -4,7 +4,6 @@ import os
 from collections.abc import Iterator
 from datetime import date, timedelta
 from decimal import Decimal
-from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.database.session import database_url, get_session
 from app.main import create_app
+from tests.auth_support import authenticated_headers
 from app.modules.etl.domain import AnalyticalProduct, AnalyticalTrendPoint
 from app.modules.features.engineering import calculate_features
 from app.modules.forecasting.model import forecast_trends
@@ -83,8 +83,8 @@ def test_score_api_isolated_and_read_only() -> None:
                     yield session
 
             app.dependency_overrides[get_session] = test_session
-            owner = {"X-Demo-Workspace-ID": str(uuid4())}
-            outsider = {"X-Demo-Workspace-ID": str(uuid4())}
+            owner = authenticated_headers(connection)
+            outsider = authenticated_headers(connection)
             with TestClient(app) as client:
                 created = client.post("/api/v1/analyses", headers=owner,
                                       json={"query": "juguetes de bebe", "country": "MX", "period_months": 12})

@@ -3,6 +3,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 import { IconComponent, IconName } from '../shared/icon.component';
+import { AuthService } from '../core/services/auth.service';
 
 @Component({
   selector: 'app-shell', standalone: true,
@@ -12,6 +13,7 @@ import { IconComponent, IconName } from '../shared/icon.component';
 export class ShellComponent {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  readonly auth = inject(AuthService);
   readonly menuOpen = signal(false);
   readonly currentSection = signal('Inicio');
   @ViewChild('menuToggle') private menuToggle?: ElementRef<HTMLButtonElement>;

@@ -27,6 +27,9 @@ nav app-icon { width: 18px; height: 18px; }
 .user-profile { border-top: 1px solid var(--line); padding: 18px 1px; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
 .user-profile small { display: block; color: var(--muted); font-size: 11px; font-weight: 400; margin-top: 4px; }
 .user-profile app-icon { margin-left: auto; width: 14px; }
+.user-profile small { overflow: hidden; text-overflow: ellipsis; max-width: 175px; }
+.logout { width: 100%; text-align: left; background: none; border: 0; padding: 0 1px 20px; color: var(--green); font-size: 12px; font-weight: 600; }
+.logout:hover { text-decoration: underline; }
 .avatar { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #eeecdf; color: #6a705b; font-size: 12px; font-weight: 600; }
 .avatar.small { width: 30px; height: 30px; font-size: 11px; }
 .main-shell { margin-left: 244px; display: flex; min-height: 100vh; flex-direction: column; }

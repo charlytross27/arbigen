@@ -17,10 +17,11 @@ from index import app as vercel_app
 def test_schema_has_separate_source_snapshot_and_analytical_products() -> None:
     assert set(Base.metadata.tables) == {
         "users", "analyses", "products", "trend_points", "clusters",
-        "opportunities", "campaigns", "generated_assets", "marketplace_snapshots",
+        "opportunities", "campaigns", "generated_assets", "marketplace_snapshots", "auth_sessions",
     }
     assert Base.metadata.tables["products"].c.attributes.type.__class__.__name__ == "JSONB"
     assert Base.metadata.tables["campaigns"].c.original_image_url.nullable is False
+    assert Base.metadata.tables["users"].c.password_hash.nullable is True
 
 
 def test_vercel_entrypoint_exports_the_same_fastapi_application() -> None:

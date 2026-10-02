@@ -6,8 +6,8 @@
       <span>Arbigen <small>INTELIGENCIA PARA VENDER</small></span>
     </a>
     <div class="workspace">
-      <span class="workspace-avatar">E</span
-      ><span>Mi espacio de trabajo<small>Este navegador</small></span
+      <span class="workspace-avatar">{{ auth.user()?.name?.charAt(0) ?? 'A' }}</span
+      ><span>Mi espacio de trabajo<small>{{ auth.user()?.name }}</small></span
       ><span class="workspace-dot"></span>
     </div>
     <div class="nav-label eyebrow">Workspace</div>
@@ -31,7 +31,7 @@
         <span class="note-icon"><app-icon name="sparkles" /></span
         ><strong>De una idea a tu catálogo.</strong>
         <p>Descubre qué vender.<br />Dale tu propia identidad.</p>
-        <span>Estás explorando la versión demo</span>
+        <span>Tu espacio privado de investigación</span>
       </div>
       <nav class="secondary-nav" aria-label="Cuenta">
         <a
@@ -47,11 +47,11 @@
           ><app-icon name="user" />Perfil</a
         >
       </nav>
-      <a class="user-profile" routerLink="/profile"
-        ><span class="avatar">E</span
-        ><span>Espacio local<small>Sin cuenta vinculada</small></span
-        ><app-icon name="chevron"
-      /></a>
+      <div class="user-profile">
+        <span class="avatar">{{ auth.user()?.name?.charAt(0) ?? 'A' }}</span
+        ><span>{{ auth.user()?.name }}<small>{{ auth.user()?.email }}</small></span>
+      </div>
+      <button type="button" class="logout" (click)="auth.logout()">Cerrar sesión</button>
     </div>
   </aside>
   <div class="main-shell">
@@ -71,12 +71,12 @@
         ><span>{{ currentSection() }}</span>
       </div>
       <div class="topbar-right">
-        <span class="demo-badge"><span></span>Espacio local</span
+        <span class="demo-badge"><span></span>Sesión privada</span
         ><a
           class="avatar small"
           routerLink="/profile"
           aria-label="Ver estado de la cuenta"
-          >E</a
+          >{{ auth.user()?.name?.charAt(0) ?? 'A' }}</a
         >
       </div>
     </header>
@@ -84,7 +84,7 @@
     <footer>
       <span>Arbigen</span
       ><span
-        >Investigaciones del espacio local
+        >Investigaciones de tu cuenta
         <span class="version">v0.1</span></span
       >
     </footer>

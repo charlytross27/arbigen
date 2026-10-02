@@ -4,7 +4,7 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 
 from app.core.config import get_settings
-from app.database import models  # noqa: F401 - registra las ocho tablas
+from app.database import models  # noqa: F401 - registra las tablas de la aplicación
 from app.database.base import Base
 from app.database.session import database_url
 

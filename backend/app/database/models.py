@@ -1,4 +1,4 @@
-"""Entidades iniciales. Los fixtures del frontend aún no se escriben en estas tablas."""
+"""Entidades persistentes de cuentas, investigaciones y datos analíticos."""
 
 from datetime import date, datetime
 from decimal import Decimal
@@ -26,6 +26,17 @@ class User(Base):
     id: Mapped[UUID] = uuid_id()
     email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = created_at()
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    csrf_token: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     created_at: Mapped[datetime] = created_at()
 
 

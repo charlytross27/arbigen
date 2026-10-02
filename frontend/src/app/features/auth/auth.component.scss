@@ -1,0 +1,21 @@
+:host { display: block; min-height: 100vh; }
+.auth-page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 30px 16px; background: #f7f8f4; }
+.auth-brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-size: 19px; font-weight: 700; }
+.auth-brand small { display: block; font-size: 9px; letter-spacing: 1.3px; color: var(--muted); margin-top: 4px; }
+.brand-mark { width: 39px; height: 39px; display: grid; place-items: center; border-radius: 9px; background: var(--green); color: white; }
+.auth-card { width: min(100%, 430px); padding: 34px; background: white; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 45px #273b2d0d; }
+.eyebrow { color: #749078; }
+h1 { margin-top: 12px; font-size: 26px; }
+.intro { color: var(--muted); margin: 10px 0 27px; line-height: 1.6; }
+form { display: flex; flex-direction: column; }
+label { color: var(--ink); font-size: 12px; font-weight: 600; margin: 13px 0 8px; }
+input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #dbe1d8; border-radius: 7px; background: white; color: var(--ink); }
+input:focus { border-color: var(--green); }
+.hint { margin-top: 6px; color: var(--muted); font-size: 11px; }
+.error { color: #a43636; background: #fff4f2; border: 1px solid #f1d3ce; border-radius: 6px; padding: 10px 12px; margin: 16px 0 0; font-size: 12px; }
+button { justify-content: center; margin-top: 24px; }
+.switch { text-align: center; border-top: 1px solid var(--line); padding-top: 20px; margin-top: 25px; color: var(--muted); font-size: 12px; }
+.switch a { color: var(--green); font-weight: 700; }
+.switch a:hover { text-decoration: underline; }
+.footnote { color: #89968a; font-size: 11px; text-align: center; }
+@media (max-width: 460px) { .auth-card { padding: 26px 22px; } }

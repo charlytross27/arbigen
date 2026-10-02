@@ -1,0 +1,30 @@
+<main class="auth-page">
+  <div class="auth-brand"><span class="brand-mark">A</span><span>Arbigen<small>INTELIGENCIA PARA VENDER</small></span></div>
+  <section class="auth-card" aria-labelledby="auth-title">
+    <p class="eyebrow">ACCESO PRIVADO</p>
+    <h1 id="auth-title">{{ registering ? 'Crea tu cuenta' : 'Bienvenido de nuevo' }}</h1>
+    <p class="intro">{{ registering ? 'Usa tu código de invitación para abrir un espacio personal.' : 'Entra para consultar tus investigaciones guardadas.' }}</p>
+    <form (submit)="submit($event)">
+      @if (registering) {
+        <label for="auth-name">Nombre</label>
+        <input id="auth-name" name="name" autocomplete="name" required maxlength="120" />
+      }
+      <label for="auth-email">Correo electrónico</label>
+      <input id="auth-email" name="email" type="email" autocomplete="email" required maxlength="320" />
+      <label for="auth-password">Contraseña</label>
+      <input id="auth-password" name="password" type="password" [attr.autocomplete]="registering ? 'new-password' : 'current-password'" required [attr.minlength]="registering ? 12 : null" maxlength="128" />
+      @if (registering) {
+        <p class="hint">Usa al menos 12 caracteres.</p>
+        <label for="auth-invitation">Código de invitación</label>
+        <input id="auth-invitation" name="invitation_code" type="text" autocomplete="off" required />
+      }
+      @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+      <button class="button primary" type="submit" [disabled]="busy()">{{ busy() ? 'Espera…' : registering ? 'Crear cuenta' : 'Iniciar sesión' }}</button>
+    </form>
+    <p class="switch">
+      @if (registering) { ¿Ya tienes cuenta? <a routerLink="/login">Inicia sesión</a> }
+      @else { ¿Tienes una invitación? <a routerLink="/register">Crea tu cuenta</a> }
+    </p>
+  </section>
+  <p class="footnote">Tus investigaciones se asocian a tu cuenta.</p>
+</main>

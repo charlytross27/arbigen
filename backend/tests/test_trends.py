@@ -1,7 +1,6 @@
 import os
 from collections.abc import Iterator
 from decimal import Decimal
-from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,6 +11,7 @@ from app.core.config import Settings
 from app.database.session import database_url, get_session
 from app.integrations.google_trends.csv_provider import GoogleTrendsCsvProvider
 from app.main import create_app
+from tests.auth_support import authenticated_headers
 from app.modules.trends.domain import TrendsInputError
 
 
@@ -66,8 +66,8 @@ def test_trends_endpoint_persists_and_isolates_workspaces() -> None:
                     yield session
 
             app.dependency_overrides[get_session] = test_session
-            owner = {"X-Demo-Workspace-ID": str(uuid4())}
-            outsider = {"X-Demo-Workspace-ID": str(uuid4())}
+            owner = authenticated_headers(connection)
+            outsider = authenticated_headers(connection)
             with TestClient(app) as client:
                 created = client.post("/api/v1/analyses", headers=owner, json={"query": "anillos de plata", "country": "MX", "period_months": 3})
                 assert created.status_code == 201

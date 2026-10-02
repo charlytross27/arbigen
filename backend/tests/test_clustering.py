@@ -4,7 +4,6 @@ import os
 from collections.abc import Iterator
 from datetime import datetime, timezone
 from decimal import Decimal
-from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,6 +14,7 @@ from app.core.config import Settings
 from app.database.session import database_url, get_session
 from app.integrations.marketplace_search import get_marketplace_search_provider
 from app.main import create_app
+from tests.auth_support import authenticated_headers
 from app.modules.clustering.model import cluster_products
 from app.modules.etl.domain import AnalyticalProduct
 from app.modules.marketplace.domain import MarketplaceProduct, MarketplaceSearchResult
@@ -104,8 +104,8 @@ def test_clusters_api_uses_saved_dataset_and_isolates_workspace() -> None:
             provider = FakeProvider()
             app.dependency_overrides[get_session] = test_session
             app.dependency_overrides[get_marketplace_search_provider] = lambda: provider
-            owner = {"X-Demo-Workspace-ID": str(uuid4())}
-            outsider = {"X-Demo-Workspace-ID": str(uuid4())}
+            owner = authenticated_headers(connection)
+            outsider = authenticated_headers(connection)
             with TestClient(app) as client:
                 created = client.post("/api/v1/analyses", headers=owner,
                                       json={"query": "anillos de plata", "country": "MX", "period_months": 3})

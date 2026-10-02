@@ -1,4 +1,4 @@
-"""Lectura agregada por espacio, sin proveedores externos ni métricas inferidas."""
+"""Lectura agregada por usuario, sin proveedores externos ni métricas inferidas."""
 
 from datetime import datetime, timedelta, timezone
 from typing import Literal
@@ -9,7 +9,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database.models import Analysis, MarketplaceSnapshot, Product, TrendPoint
-from app.modules.analyses.service import find_workspace_user_id
 
 
 class DashboardAnalysisRead(BaseModel):
@@ -41,11 +40,7 @@ class DashboardRead(BaseModel):
     activity: list[DashboardActivityRead]
 
 
-def read_dashboard(session: Session, workspace_id: UUID, period_days: Literal[7, 30]) -> DashboardRead:
-    user_id = find_workspace_user_id(session, workspace_id)
-    if user_id is None:
-        return DashboardRead(period_days=period_days, analysis_count=0, prepared_count=0,
-                             priced_product_count=0, trends_count=0, recent=[], activity=[])
+def read_dashboard(session: Session, user_id: UUID, period_days: Literal[7, 30]) -> DashboardRead:
     cutoff = datetime.now(timezone.utc) - timedelta(days=period_days)
     product_counts = (select(Product.analysis_id.label("analysis_id"), func.count(Product.id).label("count"))
                       .group_by(Product.analysis_id).subquery())

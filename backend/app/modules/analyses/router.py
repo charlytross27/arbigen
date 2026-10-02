@@ -1,9 +1,10 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.database.session import get_session
+from app.modules.auth.router import current_user_id
 from app.integrations.marketplace_search import get_marketplace_search_provider
 from app.integrations.google_trends.csv_provider import MAX_CSV_BYTES
 from app.integrations.trends import get_trends_provider
@@ -22,37 +23,33 @@ from app.modules.trends.domain import TrendsInputError, TrendsProvider
 router = APIRouter(prefix="/api/v1/analyses", tags=["analyses"])
 
 
-def demo_workspace_id(x_demo_workspace_id: UUID = Header(alias="X-Demo-Workspace-ID")) -> UUID:
-    return x_demo_workspace_id
-
-
 @router.post("", response_model=AnalysisRead, status_code=status.HTTP_201_CREATED)
 def post_analysis(
     payload: AnalysisCreate,
-    workspace_id: UUID = Depends(demo_workspace_id),
+    user_id: UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
 ) -> AnalysisRead:
-    return AnalysisRead.model_validate(create_analysis(session, workspace_id, payload))
+    return AnalysisRead.model_validate(create_analysis(session, user_id, payload))
 
 
 @router.get("", response_model=AnalysisList)
 def get_analyses(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    workspace_id: UUID = Depends(demo_workspace_id),
+    user_id: UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
 ) -> AnalysisList:
-    items, total = list_analyses(session, workspace_id, limit, offset)
+    items, total = list_analyses(session, user_id, limit, offset)
     return AnalysisList(items=[AnalysisRead.model_validate(item) for item in items], total=total, limit=limit, offset=offset)
 
 
 @router.get("/{analysis_id}", response_model=AnalysisRead)
 def get_analysis_detail(
     analysis_id: UUID,
-    workspace_id: UUID = Depends(demo_workspace_id),
+    user_id: UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
 ) -> AnalysisRead:
-    analysis = get_analysis(session, workspace_id, analysis_id)
+    analysis = get_analysis(session, user_id, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Análisis no encontrado.")
     return AnalysisRead.model_validate(analysis)
@@ -61,10 +58,10 @@ def get_analysis_detail(
 @router.get("/{analysis_id}/dataset", response_model=DatasetRead)
 def get_dataset(
     analysis_id: UUID,
-    workspace_id: UUID = Depends(demo_workspace_id),
+    user_id: UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
 ) -> DatasetRead:
-    analysis = get_analysis(session, workspace_id, analysis_id)
+    analysis = get_analysis(session, user_id, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Análisis no encontrado.")
     return read_dataset(session, analysis)
@@ -73,10 +70,10 @@ def get_dataset(
 @router.get("/{analysis_id}/features", response_model=FeatureReportRead)
 def get_features(
     analysis_id: UUID,
-    workspace_id: UUID = Depends(demo_workspace_id),
+    user_id: UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
 ) -> FeatureReportRead:
-    analysis = get_analysis(session, workspace_id, analysis_id)
+    analysis = get_analysis(session, user_id, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Análisis no encontrado.")
     return read_features(session, analysis)
@@ -85,10 +82,10 @@ def get_features(
 @router.get("/{analysis_id}/clusters", response_model=ClusterReportRead)
 def get_clusters(
     analysis_id: UUID,
-    workspace_id: UUID = Depends(demo_workspace_id),
+    user_id: UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
 ) -> ClusterReportRead:
-    analysis = get_analysis(session, workspace_id, analysis_id)
+    analysis = get_analysis(session, user_id, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Análisis no encontrado.")
     return read_clusters(session, analysis)
@@ -97,10 +94,10 @@ def get_clusters(
 @router.get("/{analysis_id}/forecast", response_model=ForecastReportRead)
 def get_forecast(
     analysis_id: UUID,
-    workspace_id: UUID = Depends(demo_workspace_id),
+    user_id: UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
 ) -> ForecastReportRead:
-    analysis = get_analysis(session, workspace_id, analysis_id)
+    analysis = get_analysis(session, user_id, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Análisis no encontrado.")
     return read_forecast(session, analysis)
@@ -109,10 +106,10 @@ def get_forecast(
 @router.get("/{analysis_id}/opportunity-score", response_model=ScoreReportRead)
 def get_opportunity_score(
     analysis_id: UUID,
-    workspace_id: UUID = Depends(demo_workspace_id),
+    user_id: UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
 ) -> ScoreReportRead:
-    analysis = get_analysis(session, workspace_id, analysis_id)
+    analysis = get_analysis(session, user_id, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Análisis no encontrado.")
     return read_score(session, analysis)
@@ -122,10 +119,10 @@ def get_opportunity_score(
 def post_opportunity_score_preview(
     analysis_id: UUID,
     payload: ScorePreviewRequest,
-    workspace_id: UUID = Depends(demo_workspace_id),
+    user_id: UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
 ) -> ScoreReportRead:
-    analysis = get_analysis(session, workspace_id, analysis_id)
+    analysis = get_analysis(session, user_id, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Análisis no encontrado.")
     return read_score(session, analysis, payload)
@@ -134,11 +131,11 @@ def post_opportunity_score_preview(
 @router.post("/{analysis_id}/dataset/refresh", response_model=DatasetRead)
 def post_dataset_refresh(
     analysis_id: UUID,
-    workspace_id: UUID = Depends(demo_workspace_id),
+    user_id: UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
     provider: MarketplaceSearchProvider = Depends(get_marketplace_search_provider),
 ) -> DatasetRead:
-    analysis = get_analysis(session, workspace_id, analysis_id)
+    analysis = get_analysis(session, user_id, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Análisis no encontrado.")
     return refresh_dataset(session, analysis, provider)
@@ -147,10 +144,10 @@ def post_dataset_refresh(
 @router.post("/{analysis_id}/dataset/reprocess", response_model=DatasetRead)
 def post_dataset_reprocess(
     analysis_id: UUID,
-    workspace_id: UUID = Depends(demo_workspace_id),
+    user_id: UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
 ) -> DatasetRead:
-    analysis = get_analysis(session, workspace_id, analysis_id)
+    analysis = get_analysis(session, user_id, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Análisis no encontrado.")
     return reprocess_dataset(session, analysis)
@@ -159,10 +156,10 @@ def post_dataset_reprocess(
 @router.get("/{analysis_id}/trends", response_model=TrendsRead)
 def get_trends(
     analysis_id: UUID,
-    workspace_id: UUID = Depends(demo_workspace_id),
+    user_id: UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
 ) -> TrendsRead:
-    analysis = get_analysis(session, workspace_id, analysis_id)
+    analysis = get_analysis(session, user_id, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Análisis no encontrado.")
     return read_trends(session, analysis)
@@ -172,11 +169,11 @@ def get_trends(
 async def import_trends_csv(
     analysis_id: UUID,
     request: Request,
-    workspace_id: UUID = Depends(demo_workspace_id),
+    user_id: UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
     provider: TrendsProvider = Depends(get_trends_provider),
 ) -> TrendsRead:
-    analysis = get_analysis(session, workspace_id, analysis_id)
+    analysis = get_analysis(session, user_id, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Análisis no encontrado.")
     if request.headers.get("content-type", "").split(";", 1)[0].strip().lower() not in {"text/csv", "application/csv"}:
