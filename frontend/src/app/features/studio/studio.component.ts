@@ -6,6 +6,7 @@ import { CampaignAspectRatio, CampaignConfiguration, CampaignLighting, CampaignS
 import { IconComponent } from '../../shared/icon.component';
 import { CatalogService } from '../catalogs/catalog.service';
 import { StudioApiService, StudioGenerationResponse } from './studio-api.service';
+import { normalizedImageFile } from './image-file';
 
 interface SourceImage {
   readonly file: File;
@@ -17,7 +18,6 @@ interface SourceImage {
 type StudioStatus = 'idle' | 'loading' | 'success' | 'error';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ACCEPTED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
 @Component({
   selector: 'app-studio', standalone: true,
@@ -56,7 +56,7 @@ export class StudioComponent implements OnDestroy {
   readonly formTouched = signal(false);
   readonly canGenerate = computed(() => {
     const config = this.configuration();
-    return !!this.source() && config.productName.trim().length >= 2 && config.scene.trim().length >= 3 && this.status() !== 'loading';
+    return !!this.source() && !this.fileError() && config.productName.trim().length >= 2 && config.scene.trim().length >= 3 && this.status() !== 'loading';
   });
 
   async onFileChange(event: Event): Promise<void> {
@@ -69,17 +69,21 @@ export class StudioComponent implements OnDestroy {
   private async acceptFile(file: File): Promise<void> {
     const version = ++this.uploadVersion;
     this.fileError.set(null);
-    if (!ACCEPTED_TYPES.has(file.type)) {
-      this.fileError.set('Usa una imagen PNG, JPEG o WebP.');
-      return;
-    }
     if (file.size === 0 || file.size > MAX_FILE_SIZE) {
       this.fileError.set('La imagen debe tener contenido y pesar como máximo 10 MB.');
       return;
     }
 
-    const url = URL.createObjectURL(file);
+    let url: string | null = null;
     try {
+      const normalized = await normalizedImageFile(file);
+      if (!normalized) {
+        if (version === this.uploadVersion && !this.destroyed)
+          this.fileError.set('Este archivo no es PNG, JPEG ni WebP. Convierte la imagen a uno de esos formatos y vuelve a subirla.');
+        return;
+      }
+      if (this.destroyed || version !== this.uploadVersion) return;
+      url = URL.createObjectURL(normalized);
       const image = new Image();
       image.src = url;
       await image.decode();
@@ -89,10 +93,10 @@ export class StudioComponent implements OnDestroy {
       }
       this.invalidateResults();
       const previous = this.source();
-      this.source.set({ file, name: file.name, size: file.size, url });
+      this.source.set({ file: normalized, name: normalized.name, size: normalized.size, url });
       if (previous) URL.revokeObjectURL(previous.url);
     } catch {
-      URL.revokeObjectURL(url);
+      if (url) URL.revokeObjectURL(url);
       if (version === this.uploadVersion && !this.destroyed) this.fileError.set('No pudimos abrir esa imagen. Prueba con otro archivo.');
     }
   }

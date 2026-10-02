@@ -58,6 +58,21 @@ def test_studio_rejects_invalid_image_before_paid_call() -> None:
     assert calls == 0
 
 
+def test_studio_accepts_jpeg_with_matching_mime_without_paid_call() -> None:
+    observed = []
+
+    def respond(req: httpx.Request) -> httpx.Response:
+        observed.append(req)
+        return httpx.Response(200, json={"data": [{"b64_json": "aW1hZ2U="}]})
+
+    jpeg = base64.b64encode(b"\xff\xd8\xffsmall-test-image").decode()
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        result = generate_images(request(image_base64=jpeg, image_mime_type="image/jpeg", variations=1),
+                                 Settings(openai_api_key="test-only", _env_file=None), client)
+    assert len(result.images) == 1
+    assert b'image/jpeg' in observed[0].content
+
+
 def test_studio_without_key_does_not_call_provider() -> None:
     with pytest.raises(HTTPException) as error:
         generate_images(request(), Settings(openai_api_key=None, _env_file=None))

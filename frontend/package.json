@@ -8,7 +8,8 @@
     "build:development": "ng build --configuration development",
     "watch": "ng build --watch --configuration development",
     "test:simulator": "node --experimental-strip-types src/app/features/opportunity/profitability.test.mjs",
-    "test:analysis": "node --experimental-strip-types src/app/features/analysis/saved-analysis-charts.test.mjs"
+    "test:analysis": "node --experimental-strip-types src/app/features/analysis/saved-analysis-charts.test.mjs",
+    "test:studio-image": "node --experimental-strip-types src/app/features/studio/image-file.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
