@@ -54,7 +54,7 @@ export class StudioComponent implements OnDestroy {
   readonly status = signal<StudioStatus>('idle');
   readonly variants = signal<readonly StudioVariant[]>([]);
   readonly downloadUrls = signal<ReadonlyMap<string, string>>(new Map());
-  readonly previewBlobs = signal<ReadonlyMap<string, Blob>>(new Map());
+  readonly draftId = signal<string | null>(null);
   readonly savedIds = signal<ReadonlySet<string>>(new Set());
   readonly saveError = signal<string | null>(null);
   readonly saving = signal(false);
@@ -147,7 +147,7 @@ export class StudioComponent implements OnDestroy {
     this.invalidateResults();
   }
 
-  generate(): void {
+  generate(retry = false): void {
     this.formTouched.set(true);
     if (!this.source()) this.fileError.set('Sube una fotografía para generar las imágenes.');
     if (!this.canGenerate()) return;
@@ -160,12 +160,14 @@ export class StudioComponent implements OnDestroy {
     this.generationError.set(null);
     this.configurationError.set(false);
     const version = ++this.generationVersion;
-    this.generationSubscription = this.api.generate(this.source()!.file, this.configuration()).subscribe({
+    this.generationSubscription = this.api.generate(this.source()!.file, this.configuration(), retry).subscribe({
       next: result => { void this.prepareVariants(result, version); },
-      error: (error: HttpErrorResponse) => {
+      error: (error: unknown) => {
         if (version !== this.generationVersion || this.destroyed) return;
-        this.generationError.set(error.error?.error?.message ?? 'No pudimos generar las imágenes. Inténtalo de nuevo.');
-        this.configurationError.set(error.status === 503);
+        this.generationError.set(error instanceof HttpErrorResponse
+          ? error.error?.error?.message ?? 'No pudimos generar las imágenes. Inténtalo de nuevo.'
+          : error instanceof Error ? error.message : 'No pudimos generar las imágenes. Inténtalo de nuevo.');
+        this.configurationError.set(error instanceof HttpErrorResponse && error.status === 503);
         this.status.set('error');
       },
     });
@@ -183,18 +185,11 @@ export class StudioComponent implements OnDestroy {
     const image = this.source();
     if (!image || this.status() !== 'success' || this.saving()) return;
     this.saveError.set(null);
-    const previews: { variant: StudioVariant; blob: Blob; selected: boolean }[] = [];
-    for (const variant of this.variants()) {
-      const blob = this.previewBlobs().get(variant.id);
-      if (!blob) {
-        this.saveError.set('No pudimos preparar el catálogo. Regenera las vistas previas.');
-        return;
-      }
-      previews.push({ variant, blob, selected: this.savedIds().has(variant.id) });
-    }
+    const draftId = this.draftId();
+    if (!draftId) { this.saveError.set('No pudimos preparar el catálogo. Regenera las vistas previas.'); return; }
     try {
       this.saving.set(true);
-      const campaign = await this.catalogs.saveFromStudio(this.configuration(), image.file, previews, this.catalogSource);
+      const campaign = await this.catalogs.saveFromDraft(draftId, [...this.savedIds()], this.catalogSource);
       await this.router.navigate(['/catalogs', campaign.id]);
     } catch (error) {
       this.saveError.set(error instanceof HttpErrorResponse
@@ -207,29 +202,22 @@ export class StudioComponent implements OnDestroy {
 
   fileSize(size: number): string { return `${Math.round(size / 1024)} KB`; }
 
-  private async prepareVariants(result: StudioGenerationResponse, version: number): Promise<void> {
+  private prepareVariants(result: StudioGenerationResponse, version: number): void {
     const urls = new Map<string, string>();
-    const blobs = new Map<string, Blob>();
     const variants: StudioVariant[] = [];
     try {
-      for (const [index, generated] of result.images.entries()) {
-        const variant: StudioVariant = { id: `${version}-${index + 1}`, label: `Escena ${index + 1}` };
-        const blob = await fetch(`data:${generated.mime_type};base64,${generated.image_base64}`).then(response => response.blob());
-        if (blob.type !== 'image/png' || !blob.size) throw new Error('Imagen inválida.');
-        urls.set(variant.id, URL.createObjectURL(blob));
-        blobs.set(variant.id, blob);
+      for (const generated of result.images) {
+        if (!generated.id || generated.mime_type !== 'image/png' || !generated.url.startsWith('/api/')) throw new Error('Imagen inválida.');
+        const variant: StudioVariant = { id: generated.id, label: generated.label };
+        urls.set(variant.id, generated.url);
         variants.push(variant);
       }
-      if (version !== this.generationVersion || this.destroyed) {
-        for (const url of urls.values()) URL.revokeObjectURL(url);
-        return;
-      }
+      if (version !== this.generationVersion || this.destroyed) return;
+      this.draftId.set(result.draft_id);
       this.downloadUrls.set(urls);
-      this.previewBlobs.set(blobs);
       this.variants.set(variants);
       this.status.set('success');
     } catch {
-      for (const url of urls.values()) URL.revokeObjectURL(url);
       if (version === this.generationVersion && !this.destroyed) {
         this.generationError.set('No pudimos preparar las imágenes recibidas. Inténtalo de nuevo.');
         this.status.set('error');
@@ -250,9 +238,8 @@ export class StudioComponent implements OnDestroy {
   }
 
   private clearDownloads(): void {
-    for (const url of this.downloadUrls().values()) URL.revokeObjectURL(url);
     this.downloadUrls.set(new Map());
-    this.previewBlobs.set(new Map());
+    this.draftId.set(null);
   }
 
   private cancelPending(): void {

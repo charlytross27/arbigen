@@ -20,6 +20,8 @@ class ImageStorage(Protocol):
 
 
 def _valid_filename(filename: str) -> bool:
+    if filename.startswith("chunk-") and len(filename) == 8 and filename[6:].isdigit():
+        return 0 <= int(filename[6:]) <= 99
     if filename in {"original.png", "original.jpg", "original.webp"}:
         return True
     if not (filename.startswith("asset-") and filename.endswith(".png")):
@@ -78,7 +80,9 @@ class VercelBlobImageStorage:
 
     def put(self, user_id: UUID, campaign_id: UUID, filename: str, data: bytes) -> None:
         key = self._key(user_id, campaign_id, filename)
-        content_type = "image/jpeg" if filename.endswith(".jpg") else "image/webp" if filename.endswith(".webp") else "image/png"
+        content_type = ("application/octet-stream" if filename.startswith("chunk-") else
+                        "image/jpeg" if filename.endswith(".jpg") else
+                        "image/webp" if filename.endswith(".webp") else "image/png")
         try:
             with BlobClient(token=self.token) as client:
                 result = client.put(key, data, access="private", content_type=content_type,

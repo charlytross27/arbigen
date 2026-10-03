@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func, text
+from sqlalchemy import JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -186,3 +186,23 @@ class GeneratedAsset(Base):
     image_url: Mapped[str] = mapped_column(Text, nullable=False)
     is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     created_at: Mapped[datetime] = created_at()
+
+
+class StudioDraft(Base):
+    """Short-lived, account-owned staging area for image uploads and previews."""
+
+    __tablename__ = "studio_drafts"
+
+    id: Mapped[UUID] = uuid_id()
+    user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    original_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    original_mime_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    original_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    chunk_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, server_default="uploading")
+    configuration: Mapped[dict | None] = mapped_column(JSON)
+    preview_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    created_at: Mapped[datetime] = created_at()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+
+    __table_args__ = (CheckConstraint("original_size > 0 AND original_size <= 10485760", name="studio_draft_size"),)

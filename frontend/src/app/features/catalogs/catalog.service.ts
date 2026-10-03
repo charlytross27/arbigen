@@ -2,15 +2,9 @@ import { HttpClient } from '@angular/common/http';
 import { effect, Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import type { CampaignConfiguration, StudioVariant } from '../../core/models/campaign.model';
+import type { CampaignConfiguration } from '../../core/models/campaign.model';
 import type { CatalogCampaign } from '../../core/models/catalog.model';
 import { AuthService } from '../../core/services/auth.service';
-
-interface StudioAssetInput {
-  readonly variant: StudioVariant;
-  readonly blob: Blob;
-  readonly selected: boolean;
-}
 
 export interface CatalogSourceInput {
   readonly analysisId: string;
@@ -32,15 +26,6 @@ interface CatalogResponse {
   source: { analysis_id: string; product_id: string | null; product_title: string } | null;
   created_at: string;
   assets: { id: string; label: string; url: string; favorite: boolean }[];
-}
-
-function base64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('No pudimos leer la imagen.'));
-    reader.onload = () => resolve(String(reader.result).split(',', 2)[1] ?? '');
-    reader.readAsDataURL(blob);
-  });
 }
 
 function mapCampaign(data: CatalogResponse, version = ''): CatalogCampaign {
@@ -104,22 +89,9 @@ export class CatalogService {
     }
   }
 
-  async saveFromStudio(configuration: CampaignConfiguration, file: File, previews: readonly StudioAssetInput[], source: CatalogSourceInput | null): Promise<CatalogCampaign> {
-    const selected = previews.filter(preview => preview.selected);
-    const included = selected.length ? selected : previews;
-    if (!included.length) throw new Error('No hay vistas previas para el catálogo.');
-    const assets = await Promise.all(included.map(async preview => ({
-      label: preview.variant.label, image_base64: await base64(preview.blob), favorite: preview.selected,
-    })));
-    const response = await firstValueFrom(this.http.post<CatalogResponse>(this.baseUrl, {
-      configuration: {
-        image_base64: await base64(file), image_mime_type: file.type,
-        product_name: configuration.productName.trim(),
-        product_description: configuration.productDescription.trim(),
-        style: configuration.style, scene: configuration.scene.trim(),
-        lighting: configuration.lighting, aspect_ratio: configuration.aspectRatio,
-        variations: configuration.variations,
-      }, original_name: file.name, assets,
+  async saveFromDraft(draftId: string, selectedIds: readonly string[], source: CatalogSourceInput | null): Promise<CatalogCampaign> {
+    const response = await firstValueFrom(this.http.post<CatalogResponse>(`${this.baseUrl}/from-draft`, {
+      draft_id: draftId, selected_ids: selectedIds,
       source: source ? { analysis_id: source.analysisId, product_id: source.productId } : null,
     }, { headers: this.auth.csrfHeaders() }));
     const campaign = mapCampaign(response);

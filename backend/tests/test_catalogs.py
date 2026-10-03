@@ -1,6 +1,7 @@
 """Cost-free catalog persistence and ownership checks."""
 
 import base64
+import anyio
 from collections.abc import Iterator
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
@@ -25,6 +26,10 @@ from app.modules.catalogs.router import (
 from app.modules.studio.router import GenerateImagesRequest, GenerateImagesResponse, GeneratedImage
 
 IMAGE = b"\x89PNG\r\n\x1a\nsmall-catalog-test-image"
+
+
+async def response_bytes(response) -> bytes:
+    return b"".join([chunk async for chunk in response.body_iterator])
 
 
 def test_catalog_persists_privately_and_restores_after_delete(tmp_path) -> None:
@@ -52,8 +57,8 @@ def test_catalog_persists_privately_and_restores_after_delete(tmp_path) -> None:
         created = create_catalog(payload, owner, session, settings)
         campaign_id = created["id"]
         asset_id = created["assets"][0]["id"]
-        assert get_original(campaign_id, owner, session, settings).body == IMAGE
-        assert get_asset_image(campaign_id, asset_id, owner, session, settings).body == IMAGE
+        assert anyio.run(response_bytes, get_original(campaign_id, owner, session, settings)) == IMAGE
+        assert anyio.run(response_bytes, get_asset_image(campaign_id, asset_id, owner, session, settings)) == IMAGE
         assert len(list_catalogs(owner, session, settings)) == 1
         assert list_catalogs(stranger, session, settings) == []
         with pytest.raises(HTTPException) as denied:
@@ -104,7 +109,7 @@ def test_catalog_add_and_regenerate_use_saved_original_without_paid_call(tmp_pat
         first_id = created["assets"][0]["id"]
         regenerated = regenerate_asset(campaign_id, first_id, owner, session, settings)
         assert len(regenerated["assets"]) == 2
-        assert get_asset_image(campaign_id, first_id, owner, session, settings).body == IMAGE + b"-new"
+        assert anyio.run(response_bytes, get_asset_image(campaign_id, first_id, owner, session, settings)) == IMAGE + b"-new"
         assert len(observed) == 2
         assert all(base64.b64decode(item.image_base64) == IMAGE for item in observed)
 
