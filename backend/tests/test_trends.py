@@ -31,7 +31,7 @@ def test_csv_provider_accepts_time_header_without_claiming_country_verification(
     series = GoogleTrendsCsvProvider().load(query="juguetes de bebe", country="MX", payload=payload)
     assert series.source == "google_trends_csv_geo_unverified"
     assert [point.value for point in series.points] == [Decimal(0), None, Decimal(30)]
-    with pytest.raises(TrendsInputError, match="palabra clave"):
+    with pytest.raises(TrendsInputError, match="El CSV corresponde a «juguetes de bebe», pero este análisis es de «otra búsqueda»"):
         GoogleTrendsCsvProvider().load(query="otra búsqueda", country="MX", payload=payload)
 
 
