@@ -3,11 +3,11 @@
 import base64
 import binascii
 import logging
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
@@ -55,6 +55,10 @@ class FavoriteUpdate(BaseModel):
 
 def _storage(settings: Settings) -> ImageStorage:
     return get_image_storage(settings)
+
+
+def catalog_id_for_draft(draft_id: UUID) -> UUID:
+    return uuid5(NAMESPACE_URL, f"arbigen/catalog/{draft_id}")
 
 
 def _campaign(session: Session, user_id: UUID, campaign_id: UUID, *, include_deleted: bool = False) -> Campaign:
@@ -113,7 +117,8 @@ def _read(session: Session, campaign: Campaign) -> dict:
 
 
 def _persist_catalog(payload: CatalogCreate, user_id: UUID, session: Session,
-                     settings: Settings, *, commit: bool) -> dict:
+                     settings: Settings, *, commit: bool,
+                     campaign_id: UUID | None = None, asset_ids: list[UUID] | None = None) -> dict:
     storage = _storage(settings)
     source_product = None
     if payload.source:
@@ -125,7 +130,7 @@ def _persist_catalog(payload: CatalogCreate, user_id: UUID, session: Session,
             raise HTTPException(404, "El producto de origen ya no está disponible en esa investigación.")
     original = _image_bytes(payload.configuration)
     images = [_asset_bytes(asset.image_base64) for asset in payload.assets]
-    campaign_id = uuid4()
+    campaign_id = campaign_id or uuid4()
     original_filename = f"original.{EXTENSIONS[payload.configuration.image_mime_type]}"
     prefix = f"/api/v1/catalogs/{campaign_id}"
     campaign = Campaign(
@@ -146,8 +151,8 @@ def _persist_catalog(payload: CatalogCreate, user_id: UUID, session: Session,
     )
     files = [(original_filename, original)]
     session.add(campaign)
-    for data, image in zip(payload.assets, images, strict=True):
-        asset_id = uuid4()
+    ids = asset_ids if asset_ids is not None else [uuid4() for _ in payload.assets]
+    for data, image, asset_id in zip(payload.assets, images, ids, strict=True):
         files.append((f"asset-{asset_id}.png", image))
         session.add(GeneratedAsset(
             id=asset_id, campaign_id=campaign_id, label=data.label,
@@ -193,8 +198,13 @@ def create_catalog_from_draft(
     settings: Settings = Depends(get_settings),
 ) -> dict:
     draft = session.get(StudioDraft, payload.draft_id)
-    if draft is None or draft.user_id != user_id or draft.status != "generated":
+    if draft is None or draft.user_id != user_id:
         raise HTTPException(404, "El borrador no está disponible.")
+    campaign_id = catalog_id_for_draft(draft.id)
+    if draft.status == "saved":
+        return _read(session, _campaign(session, user_id, campaign_id))
+    if draft.status != "generated":
+        raise HTTPException(409, "El catálogo aún no está listo. Vuelve a comprobarlo en un momento.")
     from datetime import datetime, timezone
     expires = draft.expires_at if draft.expires_at.tzinfo else draft.expires_at.replace(tzinfo=timezone.utc)
     if expires <= datetime.now(timezone.utc):
@@ -206,32 +216,41 @@ def create_catalog_from_draft(
     included = [asset_id for asset_id in preview_map if not selected or asset_id in selected]
     if not included:
         raise HTTPException(422, "El borrador no tiene vistas para guardar.")
+    claimed = session.execute(update(StudioDraft).where(
+        StudioDraft.id == draft.id, StudioDraft.user_id == user_id,
+        StudioDraft.status == "generated",
+    ).values(status="saving"))
+    if claimed.rowcount != 1:
+        session.rollback()
+        session.refresh(draft)
+        if draft.status == "saved":
+            return _read(session, _campaign(session, user_id, campaign_id))
+        raise HTTPException(409, "El catálogo se está guardando. Vuelve a comprobarlo en un momento.")
     storage = _storage(settings)
-    original = storage.read(user_id, draft.id, draft_original_filename(draft))
-    assets = [CatalogAssetInput(
-        label=preview_map[asset_id]["label"],
-        image_base64=base64.b64encode(storage.read(user_id, draft.id, f"asset-{asset_id}.png")).decode(),
-        favorite=asset_id in selected,
-    ) for asset_id in included]
-    config = draft.configuration or {}
-    saved = _persist_catalog(CatalogCreate(
-        configuration=GenerateImagesRequest(
-            image_base64=base64.b64encode(original).decode(), image_mime_type=draft.original_mime_type,
-            **config,
-        ), original_name=draft.original_name, assets=assets, source=payload.source,
-    ), user_id, session, settings, commit=False)
+    saved: dict | None = None
     try:
+        original = storage.read(user_id, draft.id, draft_original_filename(draft))
+        assets = [CatalogAssetInput(
+            label=preview_map[asset_id]["label"],
+            image_base64=base64.b64encode(storage.read(user_id, draft.id, f"asset-{asset_id}.png")).decode(),
+            favorite=asset_id in selected,
+        ) for asset_id in included]
+        saved = _persist_catalog(CatalogCreate(
+            configuration=GenerateImagesRequest(
+                image_base64=base64.b64encode(original).decode(), image_mime_type=draft.original_mime_type,
+                **(draft.configuration or {}),
+            ), original_name=draft.original_name, assets=assets, source=payload.source,
+        ), user_id, session, settings, commit=False, campaign_id=campaign_id, asset_ids=included)
         draft.status = "saved"
         session.commit()
     except Exception:
         session.rollback()
-        filenames = [draft_original_filename(draft)]
-        filenames.extend(f"asset-{item['id']}.png" for item in saved["assets"])
-        for filename in filenames:
-            try:
-                storage.delete(user_id, saved["id"], filename)
-            except Exception:
-                logger.warning("Could not clean failed catalog save", exc_info=True)
+        if saved is not None:
+            for filename in [draft_original_filename(draft), *(f"asset-{asset_id}.png" for asset_id in included)]:
+                try:
+                    storage.delete(user_id, campaign_id, filename)
+                except Exception:
+                    logger.warning("Could not clean failed catalog save", exc_info=True)
         raise
     for filename in [draft_original_filename(draft), *(f"asset-{item['id']}.png" for item in draft.preview_ids)]:
         try:

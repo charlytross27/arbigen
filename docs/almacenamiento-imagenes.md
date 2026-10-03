@@ -6,10 +6,17 @@ archivo local. PostgreSQL guarda los metadatos del catálogo, no los bytes de
 las imágenes. Estudio IA guarda primero un borrador temporal de hasta 24 horas:
 la foto sube en fragmentos de 2 MB, las vistas generadas se guardan junto a ella
 y el catálogo se crea copiando los archivos seleccionados en el servidor.
-Si se pierde la respuesta tras una generación completada, «Reintentar» recupera
-el resultado del mismo borrador sin solicitar otra imagen. Una función que se
-interrumpa durante la generación puede dejar el borrador en curso; en ese caso
-se debe iniciar una solicitud nueva de forma explícita, con posible cargo.
+Si se pierde la respuesta tras una generación completada, «Comprobar resultado»
+recupera el mismo borrador sin solicitar otra imagen. La migración 0009 registra
+el inicio y un ID de intento: dos peticiones al mismo borrador no pueden llamar
+a OpenAI a la vez. Tras al menos seis minutos, un intento atascado se marca como
+interrumpido. La interfaz ofrece iniciar una solicitud nueva de forma explícita
+y advierte del posible cargo. Los nombres de vistas se reservan antes de llamar
+al proveedor para que la limpieza pueda eliminar archivos parciales.
+«Crear catálogo» también es recuperable: repetir la petición del mismo borrador
+devuelve el catálogo ya guardado. La fila del borrador se conserva hasta vencer
+a las 24 horas para permitir esa recuperación; los archivos temporales se borran
+en cuanto el catálogo queda guardado.
 
 Production usará el Blob store **Private** de `arbigen-api`, que ya aparece en
 Vercel. El adaptador `VercelBlobImageStorage` escribe con `access="private"`
@@ -26,10 +33,10 @@ instala las dependencias de `backend/requirements.txt` durante el build. El
 backend comprueba que la URL recibida tras cada subida pertenezca a un dominio
 `.private.blob.vercel-storage.com`. Sin la configuración, las rutas de catálogo
 responden 503; el código de esta fase aún no se ha desplegado. Antes de
-desplegarlo, aplica la migración `0008_studio_drafts` en Neon mediante su URL
+desplegarlo, aplica las migraciones hasta `0009_studio_attempts` en Neon mediante su URL
 directa de migraciones.
 
-Los borradores vencidos y los ya convertidos en catálogo se inventarían sin
+Los borradores vencidos se inventarían sin
 modificar datos con:
 
 ```bash
@@ -38,6 +45,8 @@ cd backend
 ```
 
 Añade `--apply` para eliminar sus archivos y filas en el entorno configurado.
+Si un guardado se interrumpió antes del commit, la limpieza también retira las
+copias parciales del catálogo que no llegó a registrarse.
 En Production habrá que programar esta limpieza; no se ejecuta durante una
 petición de usuario. Las lecturas de imágenes se envían mediante respuestas por
 fragmentos para no incluir los PNG en JSON ni en una respuesta monolítica.

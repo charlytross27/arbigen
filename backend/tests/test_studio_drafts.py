@@ -4,8 +4,9 @@ import base64
 from collections.abc import Iterator
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
-from uuid import uuid4
+from uuid import UUID, uuid4
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -42,6 +43,18 @@ def test_large_studio_draft_can_be_saved_without_large_json_or_paid_call(tmp_pat
 
     def fake_generate(request, _settings):
         observed.append(len(base64.b64decode(request.image_base64)))
+        with Session(engine) as check:
+            running = check.get(StudioDraft, UUID(draft["id"]))
+            assert running.status == "generating"
+            assert running.generation_attempt_id is not None
+            assert len(running.preview_ids) == 1
+        with TestClient(app) as concurrent:
+            concurrent.cookies.set("arbigen_session", token)
+            duplicate = concurrent.post(f"{draft_url}/generate", json={
+                "product_name": "Producto grande", "style": "Premium", "scene": "Mesa clara",
+                "lighting": "Natural", "aspect_ratio": "1:1", "variations": 1,
+            }, headers=headers)
+            assert duplicate.status_code == 409
         return GenerateImagesResponse(images=[GeneratedImage(image_base64=base64.b64encode(generated).decode())])
 
     monkeypatch.setattr("app.modules.studio.router.generate_images", fake_generate)
@@ -110,7 +123,51 @@ def test_large_studio_draft_can_be_saved_without_large_json_or_paid_call(tmp_pat
         assert client.get(catalog["original_url"]).content == original
         assert client.get(catalog["assets"][0]["url"]).content == generated
         assert client.get("/api/v1/catalogs").json()[0]["id"] == catalog["id"]
-        assert client.post("/api/v1/catalogs/from-draft", json={
+        repeated_save = client.post("/api/v1/catalogs/from-draft", json={
             "draft_id": draft["id"], "selected_ids": [asset["id"]],
-        }, headers=headers).status_code == 404
+        }, headers=headers)
+        assert repeated_save.status_code == 201
+        assert repeated_save.json()["id"] == catalog["id"]
+        assert len(client.get("/api/v1/catalogs").json()) == 1
+
+        abandoned = client.post("/api/v1/studio/drafts", json={
+            "original_name": "otro.png", "image_mime_type": "image/png", "image_size": len(original),
+        }, headers=headers).json()
+        with Session(engine) as check:
+            row = check.get(StudioDraft, UUID(abandoned["id"]))
+            row.status = "generating"
+            row.generation_attempt_id = uuid4()
+            row.generation_started_at = datetime.now(timezone.utc)
+            check.commit()
+        stale_url = f"/api/v1/studio/drafts/{abandoned['id']}"
+        assert client.get(stale_url).json()["status"] == "generating"
+        with Session(engine) as check:
+            row = check.get(StudioDraft, UUID(abandoned["id"]))
+            row.generation_started_at = datetime.now(timezone.utc) - timedelta(minutes=7)
+            check.commit()
+        assert client.get(stale_url).json()["status"] == "interrupted"
+        assert client.post(f"{stale_url}/generate", json={
+            "product_name": "Producto grande", "style": "Premium", "scene": "Mesa clara",
+            "lighting": "Natural", "aspect_ratio": "1:1", "variations": 1,
+        }, headers=headers).status_code == 409
+        assert observed == [len(original)]
+
+        def failed_generate(_request, _settings):
+            raise HTTPException(502, "Servicio de prueba no disponible.")
+
+        monkeypatch.setattr("app.modules.studio.router.generate_images", failed_generate)
+        small = b"\x89PNG\r\n\x1a\nsmall-photo"
+        failed = client.post("/api/v1/studio/drafts", json={
+            "original_name": "pequeno.png", "image_mime_type": "image/png", "image_size": len(small),
+        }, headers=headers).json()
+        failed_url = f"/api/v1/studio/drafts/{failed['id']}"
+        assert client.put(f"{failed_url}/chunks/0", content=small, headers=headers).status_code == 204
+        assert client.post(f"{failed_url}/finalize", json={}, headers=headers).status_code == 200
+        assert client.post(f"{failed_url}/generate", json={
+            "product_name": "Producto pequeño", "style": "Premium", "scene": "Mesa clara",
+            "lighting": "Natural", "aspect_ratio": "1:1", "variations": 1,
+        }, headers=headers).status_code == 502
+        failed_status = client.get(failed_url).json()
+        assert failed_status["status"] == "ready"
+        assert failed_status["images"] == []
     engine.dispose()

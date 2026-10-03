@@ -200,6 +200,8 @@ class StudioDraft(Base):
     original_size: Mapped[int] = mapped_column(Integer, nullable=False)
     chunk_count: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(24), nullable=False, server_default="uploading")
+    generation_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    generation_attempt_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True))
     configuration: Mapped[dict | None] = mapped_column(JSON)
     preview_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     created_at: Mapped[datetime] = created_at()

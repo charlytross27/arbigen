@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 from starlette.responses import StreamingResponse
 
@@ -28,6 +29,7 @@ IMAGE_SIZES = {"1:1": "1024x1024", "4:5": "1024x1280", "16:9": "1536x864"}
 MIME_EXTENSIONS = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}
 UPLOAD_CHUNK_BYTES = 2 * 1024 * 1024
 DRAFT_LIFETIME = timedelta(hours=24)
+GENERATION_STALE_AFTER = timedelta(minutes=6)
 
 
 class DraftCreate(BaseModel):
@@ -205,6 +207,25 @@ def _draft(session: Session, user_id: UUID, draft_id: UUID) -> StudioDraft:
     return draft
 
 
+def _mark_interrupted_if_stale(session: Session, draft: StudioDraft, settings: Settings) -> None:
+    if draft.status != "generating":
+        return
+    started = draft.generation_started_at
+    if started is not None:
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=timezone.utc)
+        stale_after = max(GENERATION_STALE_AFTER,
+                          timedelta(seconds=settings.openai_image_timeout_seconds + 180))
+        if started > datetime.now(timezone.utc) - stale_after:
+            return
+    session.execute(update(StudioDraft).where(
+        StudioDraft.id == draft.id, StudioDraft.status == "generating",
+        StudioDraft.generation_attempt_id == draft.generation_attempt_id,
+    ).values(status="interrupted"))
+    session.commit()
+    session.refresh(draft)
+
+
 def draft_original_filename(draft: StudioDraft) -> str:
     return f"original.{MIME_EXTENSIONS[draft.original_mime_type]}"
 
@@ -246,11 +267,13 @@ def create_draft(
 @router.get("/drafts/{draft_id}")
 def get_draft_status(
     draft_id: UUID, user_id: UUID = Depends(current_user_id),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session), settings: Settings = Depends(get_settings),
 ) -> dict:
     draft = _draft(session, user_id, draft_id)
+    _mark_interrupted_if_stale(session, draft, settings)
     return {"status": draft.status, "chunk_size": UPLOAD_CHUNK_BYTES,
-            "chunk_count": draft.chunk_count, **draft_preview_response(draft)}
+            "chunk_count": draft.chunk_count,
+            **(draft_preview_response(draft) if draft.status == "generated" else {"draft_id": draft.id, "images": []})}
 
 
 @router.put("/drafts/{draft_id}/chunks/{index}", status_code=204)
@@ -320,8 +343,11 @@ def generate_draft(
     session: Session = Depends(get_session), settings: Settings = Depends(get_settings),
 ) -> dict:
     draft = _draft(session, user_id, draft_id)
+    _mark_interrupted_if_stale(session, draft, settings)
     if draft.status == "generated":
         return draft_preview_response(draft)
+    if draft.status == "interrupted":
+        raise HTTPException(409, "La generación anterior se interrumpió. Comprueba el resultado antes de iniciar una nueva solicitud.")
     if draft.status != "ready":
         raise HTTPException(409, "La generación sigue en curso o la fotografía aún no está lista.")
     storage = get_image_storage(settings)
@@ -330,12 +356,22 @@ def generate_draft(
         image_base64=base64.b64encode(original).decode(), image_mime_type=draft.original_mime_type,
         **options.model_dump(),
     )
-    draft.status = "generating"
+    attempt_id = uuid4()
+    previews = [{"id": str(uuid4()), "label": f"Escena {index + 1}"} for index in range(options.variations)]
+    claimed = session.execute(update(StudioDraft).where(
+        StudioDraft.id == draft_id, StudioDraft.user_id == user_id, StudioDraft.status == "ready",
+    ).values(status="generating", generation_started_at=datetime.now(timezone.utc),
+             generation_attempt_id=attempt_id, preview_ids=previews,
+             configuration=options.model_dump()))
+    if claimed.rowcount != 1:
+        session.rollback()
+        raise HTTPException(409, "La generación ya comenzó. Comprueba el estado antes de reintentar.")
     session.commit()
     written: list[str] = []
     try:
         generated = generate_images(request, settings)
-        previews = []
+        if not generated.images or len(generated.images) > len(previews):
+            raise HTTPException(502, "El servicio devolvió una cantidad de imágenes inválida.")
         for index, item in enumerate(generated.images):
             try:
                 image = base64.b64decode(item.image_base64, validate=True)
@@ -343,18 +379,24 @@ def generate_draft(
                 raise HTTPException(502, "El servicio devolvió una imagen inválida.") from None
             if not image.startswith(b"\x89PNG\r\n\x1a\n") or len(image) > MAX_IMAGE_BYTES:
                 raise HTTPException(502, "El servicio devolvió una imagen inválida.")
-            asset_id = uuid4()
-            filename = f"asset-{asset_id}.png"
+            filename = f"asset-{previews[index]['id']}.png"
             storage.put(user_id, draft_id, filename, image)
             written.append(filename)
-            previews.append({"id": str(asset_id), "label": f"Escena {index + 1}"})
-        draft.configuration = options.model_dump()
-        draft.preview_ids = previews
-        draft.status = "generated"
+        completed = session.execute(update(StudioDraft).where(
+            StudioDraft.id == draft_id, StudioDraft.status == "generating",
+            StudioDraft.generation_attempt_id == attempt_id,
+        ).values(status="generated", preview_ids=previews[:len(generated.images)],
+                 generation_started_at=None, generation_attempt_id=None))
+        if completed.rowcount != 1:
+            raise HTTPException(409, "La generación terminó fuera de tiempo. Inicia una nueva solicitud si la necesitas.")
         session.commit()
     except Exception:
         session.rollback()
-        draft.status = "ready"
+        session.execute(update(StudioDraft).where(
+            StudioDraft.id == draft_id, StudioDraft.status == "generating",
+            StudioDraft.generation_attempt_id == attempt_id,
+        ).values(status="ready", preview_ids=[], configuration=None,
+                 generation_started_at=None, generation_attempt_id=None))
         session.commit()
         for filename in written:
             try:
@@ -362,6 +404,7 @@ def generate_draft(
             except Exception:
                 logger.warning("Could not clean failed Studio preview", exc_info=True)
         raise
+    session.refresh(draft)
     return draft_preview_response(draft)
 
 

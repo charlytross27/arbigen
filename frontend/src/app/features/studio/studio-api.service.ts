@@ -7,7 +7,7 @@ import type { CampaignConfiguration } from '../../core/models/campaign.model';
 
 interface StudioDraft { readonly id: string; readonly chunk_size: number; readonly chunk_count: number }
 interface DraftStatus extends StudioGenerationResponse {
-  readonly status: 'uploading' | 'ready' | 'generating' | 'generated' | 'saved';
+  readonly status: 'uploading' | 'ready' | 'generating' | 'interrupted' | 'generated' | 'saved';
   readonly chunk_size: number;
   readonly chunk_count: number;
 }
@@ -21,6 +21,9 @@ export interface StudioGenerationResponse {
   readonly draft_id: string;
   readonly images: readonly GeneratedStudioImage[];
 }
+
+export class StudioGenerationPendingError extends Error {}
+export class StudioGenerationInterruptedError extends Error {}
 
 @Injectable({ providedIn: 'root' })
 export class StudioApiService {
@@ -44,7 +47,9 @@ export class StudioApiService {
         if (draft.status === 'generated') return of(draft);
         if (draft.status === 'ready') return this.startGeneration(id, options);
         if (draft.status === 'uploading') return this.uploadAndGenerate({ id, chunk_size: draft.chunk_size, chunk_count: draft.chunk_count }, file, options);
-        return throwError(() => new Error('La generación anterior sigue en curso o se interrumpió. Espera unos minutos y reintenta. Si no cambia, pulsa «Generar imágenes» para iniciar una nueva solicitud.'));
+        if (draft.status === 'generating') return throwError(() => new StudioGenerationPendingError('La generación anterior sigue en curso. Comprueba el resultado en unos minutos.'));
+        if (draft.status === 'interrupted') return throwError(() => new StudioGenerationInterruptedError('La generación anterior se interrumpió. Puedes iniciar una nueva solicitud; podría generar otro cargo.'));
+        return throwError(() => new Error('Este borrador ya no está disponible. Sube la fotografía de nuevo.'));
       }));
     }
     this.active = null;

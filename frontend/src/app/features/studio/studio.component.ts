@@ -5,7 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { CampaignAspectRatio, CampaignConfiguration, CampaignLighting, CampaignStyle, StudioVariant } from '../../core/models/campaign.model';
 import { IconComponent } from '../../shared/icon.component';
 import { CatalogService, CatalogSourceInput } from '../catalogs/catalog.service';
-import { StudioApiService, StudioGenerationResponse } from './studio-api.service';
+import { StudioApiService, StudioGenerationInterruptedError, StudioGenerationPendingError, StudioGenerationResponse } from './studio-api.service';
 import { normalizedImageFile } from './image-file';
 
 interface SourceImage {
@@ -59,6 +59,7 @@ export class StudioComponent implements OnDestroy {
   readonly saveError = signal<string | null>(null);
   readonly saving = signal(false);
   readonly generationError = signal<string | null>(null);
+  readonly retryState = signal<'normal' | 'pending' | 'interrupted'>('normal');
   readonly configurationError = signal(false);
   readonly fileError = signal<string | null>(null);
   readonly formTouched = signal(false);
@@ -148,6 +149,7 @@ export class StudioComponent implements OnDestroy {
   }
 
   generate(retry = false): void {
+    if (!retry && this.retryState() === 'pending') return;
     this.formTouched.set(true);
     if (!this.source()) this.fileError.set('Sube una fotografía para generar las imágenes.');
     if (!this.canGenerate()) return;
@@ -158,6 +160,7 @@ export class StudioComponent implements OnDestroy {
     this.savedIds.set(new Set());
     this.status.set('loading');
     this.generationError.set(null);
+    this.retryState.set('normal');
     this.configurationError.set(false);
     const version = ++this.generationVersion;
     this.generationSubscription = this.api.generate(this.source()!.file, this.configuration(), retry).subscribe({
@@ -168,6 +171,8 @@ export class StudioComponent implements OnDestroy {
           ? error.error?.error?.message ?? 'No pudimos generar las imágenes. Inténtalo de nuevo.'
           : error instanceof Error ? error.message : 'No pudimos generar las imágenes. Inténtalo de nuevo.');
         this.configurationError.set(error instanceof HttpErrorResponse && error.status === 503);
+        this.retryState.set(error instanceof StudioGenerationPendingError ? 'pending'
+          : error instanceof StudioGenerationInterruptedError ? 'interrupted' : 'normal');
         this.status.set('error');
       },
     });
@@ -233,6 +238,7 @@ export class StudioComponent implements OnDestroy {
     this.savedIds.set(new Set());
     this.saveError.set(null);
     this.generationError.set(null);
+    this.retryState.set('normal');
     this.configurationError.set(false);
     this.clearDownloads();
   }

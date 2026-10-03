@@ -104,6 +104,10 @@ alembic/versions/0001–0005 → esquema inicial, Trends, ETL, sesiones y escena
 
 40. La migración 0008 crea `studio_drafts`, con dueño, caducidad, estado y referencias de vistas. El navegador divide fotos de hasta 10 MB en peticiones de 2 MB. El servidor arma y valida el original, guarda las vistas generadas y las entrega mediante `StreamingResponse`; `POST /api/v1/catalogs/from-draft` copia los archivos elegidos sin reenviarlos desde Angular. La API anterior de JSON con imágenes queda deshabilitada en Production. La prueba de extremo a extremo usa una foto simulada de 7 MB y una vista simulada de 5 MB, sin llamadas de pago.
 
+41. La migración 0009 añade instante e ID de intento a cada borrador. Una actualización condicional adquiere el derecho a llamar a OpenAI solo si el borrador está listo; el mismo ID protege la escritura final y evita que un proceso tardío sobrescriba un intento ya marcado como interrumpido. Tras al menos seis minutos, una consulta de estado convierte intentos atascados en «interrumpido». La interfaz distingue «Comprobar resultado», que no llama a OpenAI, de «Iniciar nueva generación», que puede generar otro cargo.
+
+42. El guardado desde un borrador usa un ID de catálogo estable y adquiere una actualización condicional del estado. Si se pierde la respuesta después del commit, la misma petición devuelve el catálogo existente sin duplicarlo. Los archivos temporales se retiran tras el guardado, mientras la fila del borrador permanece hasta su vencimiento para recuperar la respuesta.
+
 ## Fronteras futuras, todavía sin implementación
 
 - `MarketplaceSearchProvider` aísla la fuente de productos de MX/CO/AR. El clustering consume `AnalyticalProduct` derivados de `MarketplaceProduct`; forecasting consume `AnalyticalTrendPoint`; el score exploratorio consume `FeatureReport`, `ForecastReport` y `FinancialAssumptions`, nunca nombres de campos de Apify. `TrendsProvider` aísla la fuente histórica y permite sustituir el CSV por una API cuando esté disponible.
