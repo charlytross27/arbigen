@@ -2,6 +2,7 @@
 
 import os
 from collections.abc import Iterator
+from dataclasses import asdict, replace
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -13,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.database.session import database_url, get_session
 from app.main import create_app
+from app.modules.analyses.scoring import ScoreReportRead
 from tests.auth_support import authenticated_headers
 from app.modules.etl.domain import AnalyticalProduct, AnalyticalTrendPoint
 from app.modules.features.engineering import calculate_features
@@ -45,6 +47,15 @@ def test_score_uses_real_signals_and_explicit_unit_economics() -> None:
     assert report.components["margin"] == Decimal("50.00")
     assert report.components["roi"] == Decimal("25.00")
     assert report.score == Decimal("54.25")
+    assert report.model_version == "exploratory-v2"
+    assert report.evidence.product_count == 8
+    assert report.warnings == ("small_market_sample", "trend_geo_unverified")
+    assert [case.case for case in report.sensitivity] == ["price_down_10pct", "fixed_costs_up_10pct"]
+    assert report.sensitivity[0].unit_profit == Decimal("11.00")
+    assert report.sensitivity[1].unit_profit == Decimal("13.00")
+    payload = ScoreReportRead.model_validate(asdict(report)).model_dump(mode="json")
+    assert payload["evidence"]["product_count"] == 8
+    assert payload["sensitivity"][0]["unit_profit"] == "11.00"
     assert any("competencia" in item for item in report.limitations)
 
     custom = calculate_score(features=features, forecast=forecast, assumptions=financial(),
@@ -62,11 +73,43 @@ def test_missing_inputs_or_evidence_never_become_zero_score() -> None:
     assert {"market_sample", "trend_growth", "validated_forecast"} <= set(incomplete.missing)
     loss = calculate_score(features=features, forecast=forecast, assumptions=financial("90"))
     assert loss.unit_profit == Decimal("-10.00") and loss.score == Decimal("0.00")
+    fragile = calculate_score(features=features, forecast=forecast, assumptions=financial("75"))
+    assert fragile.score is not None and fragile.score > 0
+    assert fragile.sensitivity[0].unit_profit == Decimal("-4.00")
+    assert fragile.sensitivity[0].score == Decimal("0.00")
     zero_cost = calculate_score(features=features, forecast=forecast,
                                 assumptions=FinancialAssumptions(Decimal(100), Decimal(0), Decimal(0), Decimal(0), Decimal(0)))
     assert zero_cost.score is None and "roi_denominator" in zero_cost.missing
     with pytest.raises(ValueError, match="sumar exactamente 1"):
         ScoreWeights(Decimal("0.3"), Decimal("0.3"), Decimal("0.3"), Decimal("0.3"))
+
+
+def test_score_evidence_warnings_are_reproducible_and_do_not_hide_missing_inputs() -> None:
+    features, forecast = evidence(product_count=20)
+    sparse_market = replace(features.market, source_count=30, price_coverage_pct=Decimal("66.67"))
+    features = replace(features, market=sparse_market)
+    report = calculate_score(
+        features=features, forecast=forecast, assumptions=financial(),
+        trend_source="google_trends_csv_geo_unverified",
+        trend_last_date=date(2026, 1, 20), market_fetched_date=date(2026, 1, 1),
+        as_of=date(2026, 3, 1),
+    )
+    assert report.status == "ready"
+    assert report.warnings == ("low_price_coverage", "trend_geo_unverified", "market_stale", "trend_stale")
+    assert report.evidence.forecast_mae == forecast.backtest_mae
+    assert report.evidence.forecast_naive_mae == forecast.naive_mae
+    assert report.evidence.trend_last_date == date(2026, 1, 20)
+
+    fresh = calculate_score(
+        features=features, forecast=forecast, assumptions=financial(),
+        trend_source="google_trends_csv", trend_last_date=date(2026, 2, 20),
+        market_fetched_date=date(2026, 2, 20), as_of=date(2026, 3, 1),
+    )
+    assert fresh.warnings == ("low_price_coverage",)
+
+    incomplete = calculate_score(features=features, forecast=forecast)
+    assert incomplete.score is None and incomplete.sensitivity == ()
+    assert incomplete.warnings == ("low_price_coverage", "trend_geo_unverified")
 
 
 @pytest.mark.skipif(not os.getenv("ARBIGEN_TEST_DATABASE_URL"), reason="Requiere PostgreSQL local de prueba explícito y migrado")

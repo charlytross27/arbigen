@@ -51,8 +51,18 @@
 .score-result dt { color: #829084; font-size: 10px; }
 .score-result dd { color: #365540; font-weight: 600; margin: 5px 0 0; }
 .score-missing { margin: 14px 0; }
+.score-warnings { margin: 16px 0; padding: 12px 14px; border: 1px solid #eadcb9; border-radius: 6px; background: #fffaf0; color: #806736; font-size: 11px; line-height: 1.6; }
+.score-warnings ul { margin: 6px 0 0; padding-left: 18px; }
+.score-evidence { color: #607360; font-size: 11px; line-height: 1.6; }
 .score-components { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .score-components span { background: #f0f5ec; border-radius: 4px; color: #59735c; font-size: 10px; padding: 6px 9px; }
+.score-sensitivity { margin-top: 18px; border-top: 1px solid #e9eee8; padding-top: 12px; }
+.score-sensitivity h3 { color: #365540; font-size: 13px; margin: 0 0 4px; }
+.score-sensitivity p { color: #829084; font-size: 11px; margin: 0; }
+.score-sensitivity ul { list-style: none; padding: 0; margin: 9px 0 0; }
+.score-sensitivity li { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px 16px; padding: 7px 0; color: #607360; font-size: 11px; }
+.score-sensitivity li + li { border-top: 1px solid #eef1eb; }
+.score-sensitivity li strong { color: #365540; }
 .score-form { margin-top: 23px; }
 .score-form h3 { color: #365540; font-size: 14px; margin: 17px 0 7px; }
 .score-input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 12px; margin: 16px 0; }

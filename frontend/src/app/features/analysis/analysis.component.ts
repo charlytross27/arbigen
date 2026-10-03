@@ -366,6 +366,23 @@ export class AnalysisComponent {
     }[key] ?? key;
   }
 
+  scoreWarningLabel(key: string): string {
+    return {
+      small_market_sample: 'La muestra tiene menos de 20 productos con precio; puede cambiar mucho al ampliarla.',
+      low_price_coverage: 'Menos del 80 % de las publicaciones tiene un precio válido.',
+      trend_geo_unverified: 'No se pudo verificar el país de la serie de interés desde el archivo importado.',
+      market_stale: 'Los precios se consultaron hace más de 30 días.',
+      trend_stale: 'La serie de interés no está actualizada para su frecuencia.',
+    }[key] ?? key;
+  }
+
+  scoreSensitivityLabel(key: string): string {
+    return {
+      price_down_10pct: 'Si bajas el precio un 10 %',
+      fixed_costs_up_10pct: 'Si suben los costos fijos un 10 %',
+    }[key] ?? key;
+  }
+
   invalidateScore(id: string): void {
     this.score.set({ analysisId: id, status: 'editing' });
   }

@@ -1,6 +1,7 @@
 """Adaptador HTTP para el cálculo puro sobre datos ya persistidos."""
 
 from dataclasses import asdict
+from datetime import date
 from decimal import Decimal
 from typing import Literal
 
@@ -57,12 +58,36 @@ class ScoreReportRead(BaseModel):
     weights: ScoreWeightsRead
     components: dict[str, Decimal | None]
     missing: list[str]
+    warnings: list[str]
     limitations: list[str]
+    evidence: "ScoreEvidenceRead"
+    sensitivity: list["ScoreSensitivityRead"]
     commission_cost: Decimal | None
     total_cost: Decimal | None
     unit_profit: Decimal | None
     margin_pct: Decimal | None
     roi_pct: Decimal | None
+
+
+class ScoreEvidenceRead(BaseModel):
+    product_count: int
+    source_count: int | None
+    price_coverage_pct: Decimal | None
+    trend_point_count: int
+    trend_observed_count: int
+    trend_source: str | None
+    trend_last_date: date | None
+    market_fetched_date: date | None
+    forecast_mae: Decimal | None
+    forecast_naive_mae: Decimal | None
+    forecast_backtest_origins: int
+
+
+class ScoreSensitivityRead(BaseModel):
+    case: Literal["price_down_10pct", "fixed_costs_up_10pct"]
+    sale_price: Decimal
+    unit_profit: Decimal
+    score: Decimal | None
 
 
 def read_score(session: Session, analysis: Analysis, payload: ScorePreviewRequest | None = None) -> ScoreReportRead:
@@ -80,4 +105,8 @@ def read_score(session: Session, analysis: Analysis, payload: ScorePreviewReques
     weights = ScoreWeights(**payload.weights.model_dump()) if payload else None
     return ScoreReportRead.model_validate(asdict(calculate_score(
         features=features, forecast=forecast, assumptions=financial, weights=weights,
+        trend_source=dataset.trend_source,
+        trend_last_date=trends[-1].date if trends else None,
+        market_fetched_date=dataset.snapshot.fetched_at.date() if dataset.snapshot else None,
+        as_of=date.today(),
     )))
