@@ -5,13 +5,13 @@ Alcance aprobado: Opportunity Score **exploratorio**, registro privado por códi
 ## Estado validado en Development
 
 - Una investigación local tiene muestra, serie de Trends y escenario financiero guardado. `GET /opportunity-score` puede calcular la versión `exploratory-v2`, sin entradas faltantes, y devuelve dos pruebas de sensibilidad. Las advertencias indican muestra pequeña y geografía no verificable en el CSV; el número no es una predicción de ventas.
-- La base local está en `0009_studio_attempts`. Las 91 pruebas del backend pasaron con una base PostgreSQL temporal y migrada, eliminada al terminar. La compilación Angular de Development y Production y las pruebas del frontend pasaron. Los proveedores de pago se simularon.
+- La investigación histórica permanece en Development. Para este release, las 93 pruebas del backend pasaron con una base PostgreSQL temporal migrada hasta `0010_listing_signals`, eliminada al terminar. La compilación Angular y las pruebas de simulador, análisis e imágenes del frontend pasaron. Los proveedores de pago se simularon.
 
 ## Estado de Production
 
-- Neon `neon-bole-cave` (rama `main`, base `neondb`) ya tiene las migraciones aditivas `0005`–`0009`. Se verificó `alembic_version=0009_studio_attempts`, las tablas financieras y de borradores, una cuenta existente y cero investigaciones/campañas. El editor SQL volvió a modo de solo lectura.
+- Neon `neon-bole-cave` (rama `main`, base `neondb`) tiene las migraciones hasta `0010_listing_signals`. Se verificó `alembic_version=0010_listing_signals` y la presencia de `products.listing_signals` y `marketplace_snapshots.reported_total_results`. La migración fue aditiva; no se copiaron datos locales. El editor SQL volvió a modo de solo lectura.
 - `arbigen-api` tiene `IMAGE_STORAGE_BACKEND=vercel_blob` como variable Config, y `OPENAI_API_KEY`, `APIFY_API_TOKEN` y `BLOB_READ_WRITE_TOKEN` como Secret, todas exclusivas de Production. El almacén `arbigen-api-blob` es Private, está conectado solo a Production y el token local corresponde a ese almacén.
-- El commit `8fcd880` se publicó en `main`. Los despliegues de `arbigen-api` y `arbigen-web` quedaron en estado Ready. `/api/health` responde 200 en API y proxy web, `/login` responde 200, la ruta privada `/api/v1/auth/me` responde 401 sin sesión y el preflight CORS permite `https://arbigen-web.vercel.app`.
+- El PR [#1](https://github.com/charlytross27/arbigen/pull/1) se integró en `main` como `1f8b70c`. Los despliegues de `arbigen-api` y `arbigen-web` quedaron en estado Ready con ese commit. `/api/health` responde 200 en API y proxy web, `/login` responde 200, la ruta privada `/api/v1/auth/me` responde 401 sin sesión y el preflight CORS permite `https://arbigen-web.vercel.app`.
 
 ## Comprobaciones operativas pendientes
 
