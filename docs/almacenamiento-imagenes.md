@@ -7,7 +7,9 @@ las imágenes. Estudio IA guarda primero un borrador temporal de hasta 24 horas:
 la foto sube en fragmentos de 2 MB, las vistas generadas se guardan junto a ella
 y el catálogo se crea copiando los archivos seleccionados en el servidor.
 Si se pierde la respuesta tras una generación completada, «Comprobar resultado»
-recupera el mismo borrador sin solicitar otra imagen. La migración 0009 registra
+recupera el mismo borrador sin solicitar otra imagen. La pestaña conserva
+el ID del último borrador y, tras una recarga, recupera por la API la fotografía,
+la configuración y las vistas de la cuenta autenticada. La migración 0009 registra
 el inicio y un ID de intento: dos peticiones al mismo borrador no pueden llamar
 a OpenAI a la vez. Tras al menos seis minutos, un intento atascado se marca como
 interrumpido. La interfaz ofrece iniciar una solicitud nueva de forma explícita

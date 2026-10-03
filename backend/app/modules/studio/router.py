@@ -273,7 +273,23 @@ def get_draft_status(
     _mark_interrupted_if_stale(session, draft, settings)
     return {"status": draft.status, "chunk_size": UPLOAD_CHUNK_BYTES,
             "chunk_count": draft.chunk_count,
+            "configuration": draft.configuration,
+            "original_name": draft.original_name,
+            "original_mime_type": draft.original_mime_type,
+            "original_size": draft.original_size,
             **(draft_preview_response(draft) if draft.status == "generated" else {"draft_id": draft.id, "images": []})}
+
+
+@router.get("/drafts/{draft_id}/original")
+def get_draft_original(
+    draft_id: UUID, user_id: UUID = Depends(current_user_id),
+    session: Session = Depends(get_session), settings: Settings = Depends(get_settings),
+) -> StreamingResponse:
+    draft = _draft(session, user_id, draft_id)
+    if draft.status not in {"ready", "generating", "interrupted", "generated"}:
+        raise HTTPException(404, "La fotografía no está disponible.")
+    data = get_image_storage(settings).read(user_id, draft.id, draft_original_filename(draft))
+    return stream_image(data, draft.original_mime_type)
 
 
 @router.put("/drafts/{draft_id}/chunks/{index}", status_code=204)
@@ -395,7 +411,7 @@ def generate_draft(
         session.execute(update(StudioDraft).where(
             StudioDraft.id == draft_id, StudioDraft.status == "generating",
             StudioDraft.generation_attempt_id == attempt_id,
-        ).values(status="ready", preview_ids=[], configuration=None,
+        ).values(status="ready", preview_ids=[],
                  generation_started_at=None, generation_attempt_id=None))
         session.commit()
         for filename in written:

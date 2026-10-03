@@ -91,6 +91,10 @@ def test_large_studio_draft_can_be_saved_without_large_json_or_paid_call(tmp_pat
             uploaded = client.put(f"{draft_url}/chunks/{index}", content=chunk, headers=headers)
             assert uploaded.status_code == 204, uploaded.text
         assert client.post(f"{draft_url}/finalize", json={}, headers=headers).status_code == 200
+        assert client.get(f"{draft_url}/original").content == original
+        with TestClient(app) as other:
+            other.cookies.set("arbigen_session", other_token)
+            assert other.get(f"{draft_url}/original").status_code == 404
         response = client.post(f"{draft_url}/generate", json={
             "product_name": "Producto grande", "product_description": "", "style": "Premium",
             "scene": "Mesa clara", "lighting": "Natural", "aspect_ratio": "1:1", "variations": 1,
@@ -105,7 +109,10 @@ def test_large_studio_draft_can_be_saved_without_large_json_or_paid_call(tmp_pat
         with TestClient(app) as other:
             other.cookies.set("arbigen_session", other_token)
             assert other.get(asset["url"]).status_code == 404
-        assert client.get(draft_url).json()["status"] == "generated"
+        status = client.get(draft_url).json()
+        assert status["status"] == "generated"
+        assert status["configuration"]["product_name"] == "Producto grande"
+        assert status["original_name"] == "producto.png"
         repeated = client.post(f"{draft_url}/generate", json={
             "product_name": "Producto grande", "style": "Premium", "scene": "Mesa clara",
             "lighting": "Natural", "aspect_ratio": "1:1", "variations": 1,
@@ -170,4 +177,5 @@ def test_large_studio_draft_can_be_saved_without_large_json_or_paid_call(tmp_pat
         failed_status = client.get(failed_url).json()
         assert failed_status["status"] == "ready"
         assert failed_status["images"] == []
+        assert failed_status["configuration"]["product_name"] == "Producto pequeño"
     engine.dispose()

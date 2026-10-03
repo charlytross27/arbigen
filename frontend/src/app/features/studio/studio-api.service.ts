@@ -1,6 +1,6 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, concatMap, from, of, switchMap, tap, throwError, toArray } from 'rxjs';
+import { Observable, catchError, concatMap, from, map, of, switchMap, tap, throwError, toArray } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/services/auth.service';
 import type { CampaignConfiguration } from '../../core/models/campaign.model';
@@ -10,6 +10,19 @@ interface DraftStatus extends StudioGenerationResponse {
   readonly status: 'uploading' | 'ready' | 'generating' | 'interrupted' | 'generated' | 'saved';
   readonly chunk_size: number;
   readonly chunk_count: number;
+  readonly configuration: {
+    product_name: string; product_description: string; style: CampaignConfiguration['style'];
+    scene: string; lighting: CampaignConfiguration['lighting'];
+    aspect_ratio: CampaignConfiguration['aspectRatio']; variations: number;
+  } | null;
+  readonly original_name: string;
+  readonly original_mime_type: string;
+}
+export interface RestoredStudioDraft {
+  readonly status: DraftStatus['status'];
+  readonly result: StudioGenerationResponse;
+  readonly configuration: CampaignConfiguration;
+  readonly file: File;
 }
 export interface GeneratedStudioImage {
   readonly id: string;
@@ -30,16 +43,63 @@ export class StudioApiService {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
   private readonly baseUrl = `${environment.apiBasePath}/v1/studio/drafts`;
+  private readonly storageKey = 'arbigen_studio_draft_id';
   private active: { file: File; optionsKey: string; id: string } | null = null;
 
-  generate(file: File, configuration: CampaignConfiguration, retry = false): Observable<StudioGenerationResponse> {
-    const options = {
+  private options(configuration: CampaignConfiguration): object {
+    return {
       product_name: configuration.productName.trim(),
       product_description: configuration.productDescription.trim(),
       style: configuration.style, scene: configuration.scene.trim(),
       lighting: configuration.lighting, aspect_ratio: configuration.aspectRatio,
       variations: configuration.variations,
     };
+  }
+
+  private savedDraftId(): string | null {
+    try { return sessionStorage.getItem(this.storageKey); } catch { return null; }
+  }
+
+  private rememberDraft(id: string): void {
+    try { sessionStorage.setItem(this.storageKey, id); } catch { /* Storage may be disabled. */ }
+  }
+
+  clearActive(): void {
+    this.active = null;
+    try { sessionStorage.removeItem(this.storageKey); } catch { /* Storage may be disabled. */ }
+  }
+
+  restore(): Observable<RestoredStudioDraft | null> {
+    const id = this.savedDraftId();
+    if (!id) return of(null);
+    if (!/^[0-9a-f-]{36}$/i.test(id)) { this.clearActive(); return of(null); }
+    return this.http.get<DraftStatus>(`${this.baseUrl}/${id}`).pipe(
+      switchMap(draft => {
+        if (!draft.configuration || !['ready', 'generating', 'interrupted', 'generated'].includes(draft.status)) {
+          this.clearActive();
+          return of(null);
+        }
+        return this.http.get(`${this.baseUrl}/${id}/original`, { responseType: 'blob' }).pipe(map(blob => {
+          const file = new File([blob], draft.original_name, { type: draft.original_mime_type });
+          const config = draft.configuration!;
+          const configuration: CampaignConfiguration = {
+            productName: config.product_name, productDescription: config.product_description,
+            style: config.style, scene: config.scene, lighting: config.lighting,
+            aspectRatio: config.aspect_ratio, variations: config.variations,
+          };
+          this.active = { file, optionsKey: JSON.stringify(this.options(configuration)), id };
+          return { status: draft.status, result: draft, configuration, file };
+        }));
+      }),
+      catchError(error => {
+        if (error instanceof HttpErrorResponse && [404, 410].includes(error.status)) this.clearActive();
+        return of(null);
+      }),
+    );
+  }
+
+  generate(file: File, configuration: CampaignConfiguration, retry = false): Observable<StudioGenerationResponse> {
+    const options = this.options(configuration);
     const optionsKey = JSON.stringify(options);
     if (retry && this.active?.file === file && this.active.optionsKey === optionsKey) {
       const id = this.active.id;
@@ -52,11 +112,10 @@ export class StudioApiService {
         return throwError(() => new Error('Este borrador ya no está disponible. Sube la fotografía de nuevo.'));
       }));
     }
-    this.active = null;
     return this.http.post<StudioDraft>(this.baseUrl, {
       original_name: file.name, image_mime_type: file.type, image_size: file.size,
     }, { headers: this.auth.csrfHeaders() }).pipe(
-      tap(draft => { this.active = { file, optionsKey, id: draft.id }; }),
+      tap(draft => { this.active = { file, optionsKey, id: draft.id }; this.rememberDraft(draft.id); }),
       switchMap(draft => this.uploadAndGenerate(draft, file, options)),
     );
   }

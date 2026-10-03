@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnDestroy, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -25,12 +25,13 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
   imports: [RouterLink, IconComponent],
   templateUrl: './studio.component.html', styleUrl: './studio.component.scss',
 })
-export class StudioComponent implements OnDestroy {
+export class StudioComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(StudioApiService);
   private readonly catalogs = inject(CatalogService);
   private generationSubscription: Subscription | null = null;
+  private restoreSubscription: Subscription | null = null;
   private uploadVersion = 0;
   private generationVersion = 0;
   private destroyed = false;
@@ -67,6 +68,28 @@ export class StudioComponent implements OnDestroy {
     const config = this.configuration();
     return !!this.source() && !this.fileError() && config.productName.trim().length >= 2 && config.scene.trim().length >= 3 && this.status() !== 'loading';
   });
+
+  ngOnInit(): void {
+    const version = this.generationVersion;
+    this.restoreSubscription = this.api.restore().subscribe(restored => {
+      if (!restored || this.destroyed || this.generationVersion !== version || this.source()) return;
+      const url = URL.createObjectURL(restored.file);
+      this.source.set({ file: restored.file, name: restored.file.name, size: restored.file.size, url });
+      this.configuration.set(restored.configuration);
+      if (restored.status === 'generated') {
+        this.prepareVariants(restored.result, version);
+        return;
+      }
+      this.retryState.set(restored.status === 'generating' ? 'pending'
+        : restored.status === 'interrupted' ? 'interrupted' : 'normal');
+      this.generationError.set(restored.status === 'generating'
+        ? 'La generación anterior sigue en curso. Comprueba el resultado en unos minutos.'
+        : restored.status === 'interrupted'
+          ? 'La generación anterior se interrumpió. Una nueva solicitud podría generar otro cargo.'
+          : 'La fotografía está lista, pero la generación anterior no se completó. Puedes reintentar.');
+      this.status.set('error');
+    });
+  }
 
   async onFileChange(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
@@ -195,6 +218,7 @@ export class StudioComponent implements OnDestroy {
     try {
       this.saving.set(true);
       const campaign = await this.catalogs.saveFromDraft(draftId, [...this.savedIds()], this.catalogSource);
+      this.api.clearActive();
       await this.router.navigate(['/catalogs', campaign.id]);
     } catch (error) {
       this.saveError.set(error instanceof HttpErrorResponse
@@ -233,6 +257,7 @@ export class StudioComponent implements OnDestroy {
   private invalidateResults(): void {
     ++this.generationVersion;
     this.cancelPending();
+    this.restoreSubscription?.unsubscribe();
     this.status.set('idle');
     this.variants.set([]);
     this.savedIds.set(new Set());
@@ -257,6 +282,7 @@ export class StudioComponent implements OnDestroy {
     this.destroyed = true;
     ++this.uploadVersion;
     this.cancelPending();
+    this.restoreSubscription?.unsubscribe();
     this.clearDownloads();
     const image = this.source();
     if (image) URL.revokeObjectURL(image.url);
