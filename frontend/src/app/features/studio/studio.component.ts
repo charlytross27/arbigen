@@ -4,7 +4,7 @@ import { Subscription } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CampaignAspectRatio, CampaignConfiguration, CampaignLighting, CampaignStyle, StudioVariant } from '../../core/models/campaign.model';
 import { IconComponent } from '../../shared/icon.component';
-import { CatalogService } from '../catalogs/catalog.service';
+import { CatalogService, CatalogSourceInput } from '../catalogs/catalog.service';
 import { StudioApiService, StudioGenerationResponse } from './studio-api.service';
 import { normalizedImageFile } from './image-file';
 
@@ -18,6 +18,7 @@ interface SourceImage {
 type StudioStatus = 'idle' | 'loading' | 'success' | 'error';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Component({
   selector: 'app-studio', standalone: true,
@@ -39,6 +40,12 @@ export class StudioComponent implements OnDestroy {
   readonly ratios: readonly CampaignAspectRatio[] = ['1:1', '4:5', '16:9'];
 
   readonly source = signal<SourceImage | null>(null);
+  readonly catalogSource: CatalogSourceInput | null = (() => {
+    const analysisId = this.route.snapshot.queryParamMap.get('analysis');
+    const productId = this.route.snapshot.queryParamMap.get('productId');
+    return analysisId && productId && UUID_PATTERN.test(analysisId) && UUID_PATTERN.test(productId)
+      ? { analysisId, productId } : null;
+  })();
   readonly configuration = signal<CampaignConfiguration>({
     productName: (this.route.snapshot.queryParamMap.get('product') ?? '').slice(0, 80),
     productDescription: '', style: 'Minimalista', scene: 'Cafetería moderna',
@@ -187,7 +194,7 @@ export class StudioComponent implements OnDestroy {
     }
     try {
       this.saving.set(true);
-      const campaign = await this.catalogs.saveFromStudio(this.configuration(), image.file, previews);
+      const campaign = await this.catalogs.saveFromStudio(this.configuration(), image.file, previews, this.catalogSource);
       await this.router.navigate(['/catalogs', campaign.id]);
     } catch (error) {
       this.saveError.set(error instanceof HttpErrorResponse

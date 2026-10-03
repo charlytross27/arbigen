@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
-from app.database.models import Campaign, GeneratedAsset
+from app.database.models import Analysis, Campaign, GeneratedAsset, Product
 from app.database.session import get_session
 from app.integrations.image_storage import ImageStorage, get_image_storage
 from app.modules.auth.router import current_user_id
@@ -29,10 +29,16 @@ class CatalogAssetInput(BaseModel):
     favorite: bool = False
 
 
+class CatalogSourceInput(BaseModel):
+    analysis_id: UUID
+    product_id: UUID
+
+
 class CatalogCreate(BaseModel):
     configuration: GenerateImagesRequest
     original_name: str = Field(min_length=1, max_length=160)
     assets: list[CatalogAssetInput] = Field(min_length=1, max_length=4)
+    source: CatalogSourceInput | None = None
 
 
 class FavoriteUpdate(BaseModel):
@@ -85,6 +91,11 @@ def _read(session: Session, campaign: Campaign) -> dict:
         "original_url": campaign.original_image_url,
         "original_name": campaign.original_image_name,
         "original_mime_type": campaign.original_image_content_type,
+        "source": {
+            "analysis_id": campaign.source_analysis_id,
+            "product_id": campaign.source_product_id,
+            "product_title": campaign.source_product_title,
+        } if campaign.source_analysis_id and campaign.source_product_title else None,
         "created_at": campaign.created_at,
         "assets": [{
             "id": asset.id, "label": asset.label, "url": asset.image_url,
@@ -101,6 +112,14 @@ def create_catalog(
     settings: Settings = Depends(get_settings),
 ) -> dict:
     storage = _storage(settings)
+    source_product = None
+    if payload.source:
+        analysis = session.get(Analysis, payload.source.analysis_id)
+        if analysis is None or analysis.user_id != user_id:
+            raise HTTPException(404, "La investigación de origen no está disponible.")
+        source_product = session.get(Product, payload.source.product_id)
+        if source_product is None or source_product.analysis_id != analysis.id:
+            raise HTTPException(404, "El producto de origen ya no está disponible en esa investigación.")
     original = _image_bytes(payload.configuration)
     images = [_asset_bytes(asset.image_base64) for asset in payload.assets]
     campaign_id = uuid4()
@@ -108,6 +127,9 @@ def create_catalog(
     prefix = f"/api/v1/catalogs/{campaign_id}"
     campaign = Campaign(
         id=campaign_id, user_id=user_id,
+        source_analysis_id=payload.source.analysis_id if payload.source else None,
+        source_product_id=source_product.id if source_product else None,
+        source_product_title=source_product.title if source_product else None,
         name=f"{payload.configuration.product_name} · {payload.configuration.style}",
         product_name=payload.configuration.product_name,
         product_description=payload.configuration.product_description,

@@ -24,7 +24,7 @@
               @for (product of view.dataset.products; track product.id) { <option [value]="product.id">{{ product.title }} · {{ product.price }} {{ product.currency }}</option> }
             </select>
             @if (selectedProduct(); as product) {
-              <div class="selected-product"><strong>{{ product.title }}</strong><p>Precio observado en la muestra: {{ +product.price | number:'1.2-2' }} {{ product.currency }}</p><small>Es una referencia externa; tu precio de venta y tus costos son supuestos independientes.</small></div>
+              <div class="selected-product"><strong>{{ product.title }}</strong><p>Precio observado en la muestra: {{ +product.price | number:'1.2-2' }} {{ product.currency }}</p><small>Es una referencia externa; tu precio de venta y tus costos son supuestos independientes.</small><a class="button secondary studio-link" routerLink="/studio" [queryParams]="{ product: product.title, analysis: view.analysis.id, productId: product.id }">Crear imágenes en Estudio IA</a></div>
             } @else if (savedScenario(); as previous) {
               <div class="selected-product"><strong>Referencia guardada: {{ previous.product_title }}</strong><p>{{ +previous.reference_price | number:'1.2-2' }} {{ previous.currency }}</p><small>La muestra cambió y esta publicación ya no figura entre los productos actuales. Selecciona otra para actualizar el escenario.</small></div>
             }

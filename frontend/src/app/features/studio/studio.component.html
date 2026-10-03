@@ -1,6 +1,7 @@
 <div class="studio-page">
   <header class="studio-heading"><div><span class="eyebrow">CREACIÓN VISUAL <span>/</span> ESTUDIO IA</span><h1>Imagina tu producto en otra escena.</h1><p>Genera imágenes de campaña a partir de tu fotografía y tu dirección creativa.</p></div><span class="phase-badge"><i></i>GENERACIÓN CON IA</span></header>
   <div class="data-notice"><app-icon name="info" /><p><strong>Generación real con OpenAI.</strong> Al pulsar «Generar imágenes» enviaremos tu fotografía y descripción para crear las vistas solicitadas. Cada generación o regeneración puede generar un cargo. Al crear el catálogo, las imágenes se guardarán en tu cuenta.</p></div>
+  @if (catalogSource; as origin) { <div class="source-notice"><span>Campaña vinculada a un producto de tu investigación.</span><a [routerLink]="['/analysis', origin.analysisId]">Volver a la investigación</a></div> }
 
   @let config = configuration();
   @let image = source();

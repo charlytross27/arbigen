@@ -12,6 +12,11 @@ interface StudioAssetInput {
   readonly selected: boolean;
 }
 
+export interface CatalogSourceInput {
+  readonly analysisId: string;
+  readonly productId: string;
+}
+
 interface CatalogResponse {
   id: string;
   name: string;
@@ -24,6 +29,7 @@ interface CatalogResponse {
   original_url: string;
   original_name: string;
   original_mime_type: string;
+  source: { analysis_id: string; product_id: string | null; product_title: string } | null;
   created_at: string;
   assets: { id: string; label: string; url: string; favorite: boolean }[];
 }
@@ -41,6 +47,11 @@ function mapCampaign(data: CatalogResponse, version = ''): CatalogCampaign {
   const format = data.original_mime_type === 'image/jpeg' ? 'JPEG' : data.original_mime_type === 'image/webp' ? 'WebP' : 'PNG';
   return {
     id: data.id, name: data.name, productName: data.product_name,
+    source: data.source ? {
+      analysisId: data.source.analysis_id,
+      productId: data.source.product_id,
+      productTitle: data.source.product_title,
+    } : null,
     configuration: {
       productName: data.configuration.product_name,
       productDescription: data.configuration.product_description,
@@ -93,7 +104,7 @@ export class CatalogService {
     }
   }
 
-  async saveFromStudio(configuration: CampaignConfiguration, file: File, previews: readonly StudioAssetInput[]): Promise<CatalogCampaign> {
+  async saveFromStudio(configuration: CampaignConfiguration, file: File, previews: readonly StudioAssetInput[], source: CatalogSourceInput | null): Promise<CatalogCampaign> {
     const selected = previews.filter(preview => preview.selected);
     const included = selected.length ? selected : previews;
     if (!included.length) throw new Error('No hay vistas previas para el catálogo.');
@@ -109,6 +120,7 @@ export class CatalogService {
         lighting: configuration.lighting, aspect_ratio: configuration.aspectRatio,
         variations: configuration.variations,
       }, original_name: file.name, assets,
+      source: source ? { analysis_id: source.analysisId, product_id: source.productId } : null,
     }, { headers: this.auth.csrfHeaders() }));
     const campaign = mapCampaign(response);
     this.campaigns.update(items => [campaign, ...items]);
