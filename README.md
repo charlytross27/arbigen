@@ -121,19 +121,17 @@ Para importar Trends, abre la ficha guardada, exporta desde [Google Trends](http
 
 ## Cuaderno de ciencia de datos
 
-El archivo [notebooks/arbigen_ciencia_de_datos.ipynb](notebooks/arbigen_ciencia_de_datos.ipynb) reúne en una sola secuencia la procedencia de fuentes, el ETL, la ingeniería de variables, la distribución de precios, el clustering, el backtesting, la rentabilidad por unidad, el score exploratorio y sus límites. Seguirá creciendo con las próximas fases de ciencia de datos. En una ficha guardada pulsa «Descargar datos para el cuaderno» y guarda el archivo como `notebooks/data/dataset.json`. Esta carpeta se ignora en Git; no hace falta crear datos ficticios ni repetir una consulta a Apify. También puedes establecer `ARBIGEN_DATASET_PATH` con una ruta absoluta a otro archivo exportado.
+El archivo [notebooks/arbigen_ciencia_de_datos.ipynb](notebooks/arbigen_ciencia_de_datos.ipynb) reúne en una sola secuencia la procedencia de fuentes, el ETL, la ingeniería de variables, la distribución de precios, el clustering, el backtesting, la rentabilidad por unidad, el score exploratorio y sus límites. En Google Colab abre el cuaderno, sube el JSON obtenido con «Descargar datos para el cuaderno» al panel de archivos y ejecuta todas las celdas. Solo necesita ese JSON y Python 3.10 o posterior: las reglas analíticas están incluidas en el propio cuaderno, sin instalar el backend ni consultar Apify. En local también acepta el archivo en `notebooks/data/` o una ruta explícita en `ARBIGEN_DATASET_PATH`; esa carpeta está ignorada por Git.
 
-Para abrirlo desde la raíz del proyecto, con el entorno del backend activo, instala Jupyter en ese entorno si no lo tienes y ejecuta:
+Si prefieres abrirlo en local, instala Jupyter en el entorno Python de tu elección y ejecuta:
 
 ```bash
-cd backend
-source .venv/bin/activate
-python -m pip install jupyterlab ipykernel
-cd ../notebooks
+python3 -m pip install jupyterlab ipykernel
+cd notebooks
 jupyter lab arbigen_ciencia_de_datos.ipynb
 ```
 
-El cuaderno importa `prepare_dataset`, `calculate_features`, `cluster_products`, `forecast_trends`, `calculate_profitability` y `calculate_score` del backend: no mantiene fórmulas paralelas. No pide tokens, no conecta con PostgreSQL y no genera cargos. Si solo has importado Trends, también puedes exportar y analizar esa serie; el clustering y el score informarán qué falta. Para estudiar un escenario financiero y su sensibilidad al precio, descárgalo como JSON desde «Evaluar rentabilidad» y apunta `ARBIGEN_SCENARIO_PATH` a su ruta absoluta antes de abrir el cuaderno. Los JSON exportados permanecen fuera de Git.
+El cuaderno contiene una captura de las funciones analíticas del backend identificada por revisión para conservar los mismos cálculos sin depender del repositorio durante la ejecución; habrá que actualizarla si cambian esos modelos. No pide tokens, no conecta con PostgreSQL y no genera cargos. Si solo has importado Trends, también puedes exportar y analizar esa serie; el clustering y el score informarán qué falta. Para estudiar un escenario financiero y su sensibilidad al precio, descarga además su JSON desde «Evaluar rentabilidad» y apunta `ARBIGEN_SCENARIO_PATH` a su ruta; ese segundo archivo es opcional.
 
 Para un ensayo integral en una base local dedicada, configura `ARBIGEN_TEST_DATABASE_URL` con su conexión y ejecuta `python -m pytest -q`. La prueba hace rollback de sus inserciones. Consulta la [guía de Vercel y PostgreSQL](docs/vercel-database.md).
 
