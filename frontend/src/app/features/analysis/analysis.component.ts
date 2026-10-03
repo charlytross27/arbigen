@@ -439,7 +439,16 @@ export class AnalysisComponent {
   downloadDataset(item: SavedAnalysis): void {
     const data = this.datasetResult(item.id);
     if (!data) return;
-    const objectUrl = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    const exportData = {
+      export_schema_version: 2,
+      exported_at: new Date().toISOString(),
+      analysis: {
+        id: item.id, query: item.query, country: item.country,
+        category: item.category, period_months: item.period_months,
+      },
+      ...data,
+    };
+    const objectUrl = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a');
     link.href = objectUrl;
     link.download = `arbigen-dataset-${item.id}.json`;

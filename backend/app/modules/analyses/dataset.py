@@ -1,6 +1,6 @@
 """Persistencia RAW normalizada y vista analítica de un análisis guardado."""
 
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import UUID
@@ -11,11 +11,11 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.database.models import Analysis, MarketplaceSnapshot, Product, TrendPoint
-from app.modules.analyses.marketplace import MarketplaceSearchRead, search_marketplace
+from app.modules.analyses.marketplace import ListingSignalsRead, MarketplaceSearchRead, search_marketplace
 from app.modules.analyses.trends import TrendPointRead
 from app.modules.etl.pipeline import prepare_dataset, prepare_trends
 from app.modules.etl.domain import AnalyticalProduct
-from app.modules.marketplace.domain import MarketplaceProduct, MarketplaceSearchProvider, MarketplaceSearchResult
+from app.modules.marketplace.domain import ListingSignals, MarketplaceProduct, MarketplaceSearchProvider, MarketplaceSearchResult
 from app.modules.trends.domain import TrendObservation
 
 
@@ -42,6 +42,7 @@ class AnalyticalProductRead(BaseModel):
     permalink: str | None
     image_url: str | None
     attributes: dict[str, str]
+    signals: ListingSignalsRead
 
 
 class DatasetRead(BaseModel):
@@ -55,13 +56,29 @@ class DatasetRead(BaseModel):
     trends: list[TrendPointRead]
 
 
+def _signals_payload(signals: ListingSignals) -> dict:
+    values = asdict(signals)
+    for key in ("previous_price", "rating"):
+        if values[key] is not None:
+            values[key] = str(values[key])
+    return values
+
+
+def _signals_from_payload(raw: dict | None) -> ListingSignals:
+    values = {item.name: (raw or {}).get(item.name) for item in fields(ListingSignals)}
+    for key in ("previous_price", "rating"):
+        if values[key] is not None:
+            values[key] = Decimal(str(values[key]))
+    return ListingSignals(**values)
+
+
 def analytical_products(dataset: DatasetRead) -> list[AnalyticalProduct]:
     """Convierte la lectura persistida al contrato compartido del pipeline."""
     return [AnalyticalProduct(
         external_id=product.external_id or product.id.hex,
         title=product.title, price=product.price, currency=product.currency,
         permalink=product.permalink, image_url=product.image_url,
-        attributes=dict(product.attributes),
+        attributes=dict(product.attributes), signals=_signals_from_payload(product.signals.model_dump()),
     ) for product in dataset.products]
 
 
@@ -70,6 +87,7 @@ def _raw_product(product: MarketplaceProduct) -> dict:
         "id": product.id, "title": product.title,
         "price": str(product.price) if product.price is not None else None,
         "currency": product.currency, "permalink": product.permalink, "image_url": product.image_url,
+        "signals": _signals_payload(product.signals),
     }
 
 
@@ -78,6 +96,7 @@ def _market_product(raw: dict) -> MarketplaceProduct:
         id=raw["id"], title=raw["title"],
         price=Decimal(raw["price"]) if raw["price"] is not None else None,
         currency=raw["currency"], permalink=raw["permalink"], image_url=raw["image_url"],
+        signals=_signals_from_payload(raw.get("signals")),
     )
 
 
@@ -98,13 +117,14 @@ def read_dataset(session: Session, analysis: Analysis) -> DatasetRead:
             source=snapshot.source, site_id=snapshot.site_id, query=analysis.query,
             fetched_at=snapshot.fetched_at,
             items=[_market_product(raw) for raw in snapshot.raw_products],
+            reported_total_results=snapshot.reported_total_results,
         ) if snapshot else None,
         prepared_at=snapshot.prepared_at if snapshot else None,
         quality=ProductQualityRead.model_validate(snapshot.quality) if snapshot else None,
         products=[AnalyticalProductRead(
             id=row.id, external_id=row.external_id, title=row.title, price=row.price,
             currency=row.currency, permalink=row.permalink, image_url=row.image_url,
-            attributes=row.attributes_json,
+            attributes=row.attributes_json, signals=ListingSignalsRead.model_validate(row.listing_signals),
         ) for row in rows],
         trends=[TrendPointRead(date=point.date, value=point.value, less_than_one=point.less_than_one) for point in trends],
     )
@@ -122,11 +142,13 @@ def _persist_dataset(session: Session, analysis: Analysis, snapshot: Marketplace
     record.prepared_at = datetime.now(timezone.utc)
     record.raw_products = [_raw_product(product) for product in snapshot.items]
     record.quality = asdict(prepared.product_quality)
+    record.reported_total_results = snapshot.reported_total_results
     session.execute(delete(Product).where(Product.analysis_id == analysis.id))
     session.add_all(Product(
         analysis_id=analysis.id, external_id=product.external_id, title=product.title,
         price=product.price, currency=product.currency, permalink=product.permalink,
         image_url=product.image_url, attributes_json=product.attributes,
+        listing_signals=_signals_payload(product.signals),
     ) for product in prepared.products)
     session.commit()
     return read_dataset(session, analysis)
@@ -144,5 +166,6 @@ def reprocess_dataset(session: Session, analysis: Analysis) -> DatasetRead:
     snapshot = MarketplaceSearchResult(
         source=record.source, site_id=record.site_id, query=analysis.query,
         fetched_at=record.fetched_at, items=[_market_product(raw) for raw in record.raw_products],
+        reported_total_results=record.reported_total_results,
     )
     return _persist_dataset(session, analysis, snapshot)

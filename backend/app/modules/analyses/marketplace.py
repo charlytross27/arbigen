@@ -10,6 +10,26 @@ from app.core.config import get_settings
 from app.modules.marketplace.domain import MarketplaceSearchError, MarketplaceSearchProvider, MarketplaceSearchResult
 
 
+class ListingSignalsRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    previous_price: Decimal | None = None
+    free_shipping: bool | None = None
+    official_store: bool | None = None
+    international_purchase: bool | None = None
+    stock_available: bool | None = None
+    sold_quantity: int | None = None
+    review_count: int | None = None
+    rating: Decimal | None = None
+    position: int | None = None
+    seller_id: str | None = None
+    brand: str | None = None
+    category_id: str | None = None
+    domain_id: str | None = None
+    catalog_product_id: str | None = None
+    variation_id: str | None = None
+
+
 class MarketplaceProductRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -19,6 +39,7 @@ class MarketplaceProductRead(BaseModel):
     currency: str | None
     permalink: str | None
     image_url: str | None
+    signals: ListingSignalsRead
 
 
 class MarketplaceSearchRead(BaseModel):
@@ -29,6 +50,7 @@ class MarketplaceSearchRead(BaseModel):
     query: str
     fetched_at: datetime
     items: list[MarketplaceProductRead]
+    reported_total_results: int | None = None
 
 
 def search_marketplace(country: str, query: str, provider: MarketplaceSearchProvider) -> MarketplaceSearchResult:
@@ -53,4 +75,3 @@ def search_marketplace(country: str, query: str, provider: MarketplaceSearchProv
         status_code, message = messages.get(error.code, (502, "No se pudo consultar Mercado Libre."))
         raise HTTPException(status_code=status_code, detail=message) from None
     return replace(snapshot, items=snapshot.items[:limit])
-
