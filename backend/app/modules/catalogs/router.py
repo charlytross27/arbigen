@@ -2,6 +2,7 @@
 
 import base64
 import binascii
+import logging
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -17,6 +18,7 @@ from app.modules.auth.router import current_user_id
 from app.modules.studio.router import GenerateImagesRequest, _image_bytes, generate_images
 
 router = APIRouter(prefix="/api/v1/catalogs", tags=["catalogs"])
+logger = logging.getLogger(__name__)
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 MAX_ASSET_BYTES = 10 * 1024 * 1024
 MAX_ASSET_BASE64 = ((MAX_ASSET_BYTES + 2) // 3) * 4
@@ -159,7 +161,10 @@ def create_catalog(
     except Exception:
         session.rollback()
         for filename in written:
-            storage.delete(user_id, campaign_id, filename)
+            try:
+                storage.delete(user_id, campaign_id, filename)
+            except Exception:
+                logger.warning("Could not remove catalog image after a failed save", exc_info=True)
         raise
     return _read(session, campaign)
 
@@ -285,7 +290,10 @@ def add_asset(
         session.commit()
     except Exception:
         session.rollback()
-        storage.delete(user_id, campaign_id, filename)
+        try:
+            storage.delete(user_id, campaign_id, filename)
+        except Exception:
+            logger.warning("Could not remove catalog image after a failed save", exc_info=True)
         raise
     return _read(session, campaign)
 

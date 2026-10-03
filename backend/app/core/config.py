@@ -29,7 +29,9 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_image_model: str | None = None
     openai_image_timeout_seconds: int = Field(default=180, ge=30, le=290)
+    image_storage_backend: Literal["local", "vercel_blob"] = "local"
     image_storage_path: Path = Path(__file__).resolve().parents[2] / ".data" / "images"
+    blob_read_write_token: str | None = None
 
 
 @lru_cache
