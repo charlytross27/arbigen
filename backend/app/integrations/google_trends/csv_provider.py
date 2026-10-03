@@ -53,7 +53,10 @@ class GoogleTrendsCsvProvider:
         match = re.fullmatch(r"\s*(.*?)\s*:\s*\((.*?)\)\s*", header[1])
         term = match.group(1) if match else header[1]
         if _fold(term) != _fold(query):
-            raise TrendsInputError("La palabra clave del CSV no coincide con este análisis.")
+            raise TrendsInputError(
+                f"El CSV corresponde a «{term.strip()[:120]}», pero este análisis es de «{query}». "
+                "Importa el CSV de la misma búsqueda o crea un análisis para ese término."
+            )
         if match and _fold(match.group(2)) not in COUNTRIES[country]:
             raise TrendsInputError("El país del CSV no coincide con este análisis.")
         source = "google_trends_csv" if match else "google_trends_csv_geo_unverified"

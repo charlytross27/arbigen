@@ -1,6 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
+
+from app.modules.marketplace.domain import ListingSignals
 
 
 @dataclass(frozen=True)
@@ -12,6 +14,7 @@ class AnalyticalProduct:
     permalink: str | None
     image_url: str | None
     attributes: dict[str, str]
+    signals: ListingSignals = field(default_factory=ListingSignals)
 
 
 @dataclass(frozen=True)

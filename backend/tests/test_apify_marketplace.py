@@ -11,6 +11,8 @@ from app.integrations.apify.provider import ApifyMarketplaceSearchProvider
 from app.integrations import marketplace_search
 from app.integrations.mercado_libre.provider import MercadoLibreHttpProvider
 from app.modules.analyses import marketplace
+from app.modules.analyses.dataset import _market_product, _raw_product
+from app.modules.etl.pipeline import prepare_dataset
 from app.modules.marketplace.domain import MarketplaceProduct, MarketplaceSearchError, MarketplaceSearchResult
 
 
@@ -40,7 +42,36 @@ def test_apify_normalizes_mexican_results_and_caps_the_actor_run() -> None:
     assert result.items[0].price == Decimal("419.90")
     assert result.items[0].currency == "MXN"
     assert result.items[0].image_url == "https://http2.mlstatic.com/anillo.webp"
-    assert set(asdict(result.items[0])) == {"id", "title", "price", "currency", "permalink", "image_url"}
+    assert set(asdict(result.items[0])) == {"id", "title", "price", "currency", "permalink", "image_url", "signals"}
+    assert result.items[0].signals.sold_quantity is None
+
+
+def test_apify_normalizes_optional_listing_signals_without_inventing_missing_values() -> None:
+    row = {
+        "idPublicacion": "MLM6201055542", "articuloTitulo": "Set de fotografía",
+        "zProductoLink": "https://articulo.mercadolibre.com.mx/MLM-6201055542",
+        "nuevoPrecio": "3815", "Moneda": "MXN", "precioAnterior": "4,200",
+        "cantidadVendida": None, "numeroEvaluaciones": "1,234", "produtoReviews": "4.7",
+        "envioGratis": True, "enStock": None, "esTiendaOficial": False,
+        "esCompraInternacional": False, "itemPosition": 1,
+        "produtoCategoryID": "MLM191051", "produtoDomainID": "MLM-PHOTOGRAPHIC_BACKDROP_STANDS",
+        "idVariacion": "MLMU5164639732", "resultadosTotales": "991 resultados",
+    }
+    provider = ApifyMarketplaceSearchProvider("token", "karamelo~mercadolibre-scraper-espanol-castellano", transport=httpx.MockTransport(lambda _: httpx.Response(201, json=[row])))
+    result = provider.search(country="MX", query="set de fotografía", limit=10)
+    item = result.items[0]
+    assert result.reported_total_results == 991
+    assert item.signals.previous_price == Decimal("4200")
+    assert item.signals.review_count == 1234
+    assert item.signals.rating == Decimal("4.7")
+    assert item.signals.free_shipping is True
+    assert item.signals.official_store is False
+    assert item.signals.stock_available is None
+    assert item.signals.sold_quantity is None
+    assert item.signals.category_id == "MLM191051"
+    assert item.signals.variation_id == "MLMU5164639732"
+    assert _market_product(_raw_product(item)).signals == item.signals
+    assert prepare_dataset(country="MX", products=result.items, trends=[]).products[0].signals == item.signals
 
 
 def test_apify_skips_invalid_price_and_supports_missing_price() -> None:

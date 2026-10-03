@@ -20,6 +20,8 @@ def test_schema_has_separate_source_snapshot_and_analytical_products() -> None:
         "opportunities", "campaigns", "generated_assets", "marketplace_snapshots", "auth_sessions", "financial_scenarios", "studio_drafts",
     }
     assert Base.metadata.tables["products"].c.attributes.type.__class__.__name__ == "JSONB"
+    assert Base.metadata.tables["products"].c.listing_signals.type.__class__.__name__ == "JSONB"
+    assert Base.metadata.tables["marketplace_snapshots"].c.reported_total_results.nullable is True
     assert Base.metadata.tables["campaigns"].c.original_image_url.nullable is False
     assert Base.metadata.tables["users"].c.password_hash.nullable is True
 

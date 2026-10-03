@@ -1,4 +1,4 @@
-import { MarketplaceSearch } from './marketplace-product.model';
+import { ListingSignals, MarketplaceSearch } from './marketplace-product.model';
 import { TrendPoint } from './trends.model';
 
 export interface ProductQuality {
@@ -20,6 +20,7 @@ export interface AnalyticalProduct {
   readonly permalink: string | null;
   readonly image_url: string | null;
   readonly attributes: Readonly<Record<string, string>>;
+  readonly signals: ListingSignals;
 }
 
 export interface AnalyticalDataset {

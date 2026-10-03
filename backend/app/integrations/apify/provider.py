@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from app.modules.marketplace.domain import MarketplaceProduct, MarketplaceSearchError, MarketplaceSearchResult
+from app.modules.marketplace.domain import ListingSignals, MarketplaceProduct, MarketplaceSearchError, MarketplaceSearchResult
 
 
 API_BASE_URL = "https://api.apify.com/v2"
@@ -53,6 +53,67 @@ def _price(value: object) -> Decimal | None:
     return price if price.is_finite() and price >= 0 else None
 
 
+def _text(value: object, *, limit: int = 160) -> str | None:
+    if not isinstance(value, str):
+        return None
+    clean = " ".join(value.split())
+    return clean[:limit] or None
+
+
+def _count(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        return None
+    text = str(value).strip()
+    if not re.fullmatch(r"\d{1,3}(?:[., ]\d{3})*|\d+", text):
+        return None
+    number = int(re.sub(r"[., ]", "", text))
+    return number if number <= 1_000_000_000 else None
+
+
+def _rating(value: object) -> Decimal | None:
+    rating = _price(value)
+    return rating if rating is not None and rating <= 5 else None
+
+
+def _boolean(value: object) -> bool | None:
+    return value if isinstance(value, bool) else None
+
+
+def _signals(raw: dict) -> ListingSignals:
+    return ListingSignals(
+        previous_price=_price(raw.get("precioAnterior")),
+        free_shipping=_boolean(raw.get("envioGratis")),
+        official_store=_boolean(raw.get("esTiendaOficial")),
+        international_purchase=_boolean(raw.get("esCompraInternacional")),
+        stock_available=_boolean(raw.get("enStock")),
+        sold_quantity=_count(raw.get("cantidadVendida")),
+        review_count=_count(raw.get("numeroEvaluaciones")),
+        rating=_rating(raw.get("produtoReviews")),
+        position=_count(raw.get("itemPosition")),
+        seller_id=_text(raw.get("sellerID")),
+        brand=_text(raw.get("productoMarca")),
+        category_id=_text(raw.get("produtoCategoryID")),
+        domain_id=_text(raw.get("produtoDomainID")),
+        catalog_product_id=_text(raw.get("idProductoCatalogo")),
+        variation_id=_text(raw.get("idVariacion")),
+    )
+
+
+def _reported_total(rows: list[object]) -> int | None:
+    totals = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        text = _text(row.get("resultadosTotales"))
+        if text is None:
+            continue
+        match = re.fullmatch(r"([\d., ]+)\s+resultados?", text, flags=re.IGNORECASE)
+        count = _count(match.group(1)) if match else None
+        if count is not None:
+            totals.add(count)
+    return next(iter(totals)) if len(totals) == 1 else None
+
+
 def _product(raw: object, *, site_id: str, host: str, currency_code: str) -> MarketplaceProduct | None:
     if not isinstance(raw, dict) or raw.get("tipoRegistro") not in (None, "busqueda") or raw.get("tipoResultado") == "AD":
         return None
@@ -76,6 +137,7 @@ def _product(raw: object, *, site_id: str, host: str, currency_code: str) -> Mar
         currency=currency,
         permalink=permalink,
         image_url=_https_url(raw.get("imgDireccion"), "mlstatic.com"),
+        signals=_signals(raw),
     )
 
 
@@ -147,4 +209,5 @@ class ApifyMarketplaceSearchProvider:
         return MarketplaceSearchResult(
             source="listings", site_id=site_id, query=query,
             fetched_at=datetime.now(timezone.utc), items=products,
+            reported_total_results=_reported_total(rows[:limit]),
         )

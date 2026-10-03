@@ -69,6 +69,7 @@ class Product(Base):
     image_url: Mapped[str | None] = mapped_column(Text)
     permalink: Mapped[str | None] = mapped_column(Text)
     attributes_json: Mapped[dict] = mapped_column("attributes", JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
+    listing_signals: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
 
     __table_args__ = (CheckConstraint("price >= 0", name="price_nonnegative"),)
 
@@ -85,6 +86,7 @@ class MarketplaceSnapshot(Base):
     prepared_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     raw_products: Mapped[list] = mapped_column(JSONB, nullable=False)
     quality: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    reported_total_results: Mapped[int | None] = mapped_column(Integer)
 
 
 class TrendPoint(Base):

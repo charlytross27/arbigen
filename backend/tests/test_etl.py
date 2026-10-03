@@ -15,7 +15,7 @@ from app.integrations.marketplace_search import get_marketplace_search_provider
 from app.main import create_app
 from tests.auth_support import authenticated_headers
 from app.modules.etl.pipeline import prepare_dataset
-from app.modules.marketplace.domain import MarketplaceProduct, MarketplaceSearchResult
+from app.modules.marketplace.domain import ListingSignals, MarketplaceProduct, MarketplaceSearchResult
 from app.modules.trends.domain import TrendObservation
 
 
@@ -88,10 +88,15 @@ def test_dataset_api_refreshes_once_and_reprocesses_without_provider() -> None:
                     self.calls += 1
                     assert (country, query, limit) == ("MX", "anillos de plata", 200)
                     return MarketplaceSearchResult("listings", "MLM", query, datetime.now(timezone.utc), [
-                        product("MLM1", " Anillo  de  plata ", Decimal("420.125")),
+                        MarketplaceProduct(
+                            id="MLM1", title=" Anillo  de  plata ", price=Decimal("420.125"),
+                            currency="MXN", permalink="https://www.mercadolibre.com.mx/MLM1", image_url=None,
+                            signals=ListingSignals(previous_price=Decimal("500"), free_shipping=True,
+                                                   sold_quantity=12, category_id="MLM123"),
+                        ),
                         product("MLM1", "Duplicado", Decimal("420.125")),
                         product("MLM2", "Sin precio", None),
-                    ])
+                    ], reported_total_results=991)
 
             provider = FakeProvider()
             app.dependency_overrides[get_session] = test_session
@@ -116,7 +121,11 @@ def test_dataset_api_refreshes_once_and_reprocesses_without_provider() -> None:
                 assert data["quality"]["included_count"] == 1
                 assert data["products"][0]["price"] == "420.13"
                 assert data["products"][0]["attributes"]["material_hint"] == "plata"
+                assert data["products"][0]["signals"]["sold_quantity"] == 12
+                assert data["products"][0]["signals"]["free_shipping"] is True
                 assert len(data["snapshot"]["items"]) == 3
+                assert data["snapshot"]["reported_total_results"] == 991
+                assert data["snapshot"]["items"][0]["signals"]["previous_price"] == "500"
                 assert client.get(endpoint, headers=owner).json()["products"][0]["price"] == "420.13"
                 assert client.get(endpoint, headers=outsider).status_code == 404
                 assert provider.calls == 1
@@ -127,6 +136,8 @@ def test_dataset_api_refreshes_once_and_reprocesses_without_provider() -> None:
                 assert provider.calls == 1
                 assert len(reprocessed.json()["trends"]) == 2
                 assert reprocessed.json()["trends"][1]["less_than_one"] is True
+                assert reprocessed.json()["products"][0]["signals"]["category_id"] == "MLM123"
+                assert reprocessed.json()["snapshot"]["reported_total_results"] == 991
                 assert connection.scalar(select(MarketplaceSnapshot).where(MarketplaceSnapshot.analysis_id == analysis_id)) is not None
                 assert len(connection.scalars(select(Product).where(Product.analysis_id == analysis_id)).all()) == 1
             transaction.rollback()

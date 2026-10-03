@@ -102,7 +102,7 @@ def prepare_dataset(*, country: str, products: Iterable[MarketplaceProduct], tre
         if product.currency != expected_currency:
             invalid_currency += 1
             continue
-        clean.append(AnalyticalProduct(product.id, title, price, expected_currency, product.permalink, product.image_url, _attributes(title)))
+        clean.append(AnalyticalProduct(product.id, title, price, expected_currency, product.permalink, product.image_url, _attributes(title), product.signals))
 
     quality = ProductQuality(len(rows), duplicates, missing_title, missing_price, invalid_price, invalid_currency, len(clean))
     return PreparedDataset(tuple(clean), prepare_trends(trends), quality)
